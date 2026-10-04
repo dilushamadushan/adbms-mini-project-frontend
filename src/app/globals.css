@@ -1,3 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-medi-primary: #0E4749;
+  --color-medi-bg: #F6F7F5;
+  --color-medi-accent: #E07856;
+  --color-medi-secondary: #5B6472;
+  --color-medi-border: #DCE3E0;
+}
+
+html, body {
+  background-color: var(--color-medi-bg);
+  color: #1a1a1a;
+  height: 100%;
+}
