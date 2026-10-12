@@ -1,61 +1,56 @@
 "use client";
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { User, Lock, Eye, EyeOff, ChevronRight, AlertCircle, Activity, Shield, Zap } from 'lucide-react';
-
-const DUMMY_USERS = [
-  { id: 'admin',     pass: 'admin123',  role: 'ADMIN',        name: 'System Admin' },
-  { id: 'doctor',    pass: 'doc123',    role: 'DOCTOR',       name: 'Dr. Sarah Jenkins' },
-  { id: 'nurse',     pass: 'nurse123',  role: 'NURSE',        name: 'Nurse Michael Chen' },
-  { id: 'reception', pass: 'rec123',    role: 'RECEPTIONIST', name: 'Front Desk' },
-  { id: 'patient',   pass: 'pat123',    role: 'PATIENT',      name: 'Robert C. Miller' },
-];
-
-const ROLE_COLORS: Record<string, string> = {
-  ADMIN:        'bg-purple-500/20 text-purple-500 border-purple-500/30',
-  DOCTOR:       'bg-teal-500/20   text-teal-500   border-teal-500/30',
-  NURSE:        'bg-blue-500/20   text-blue-500   border-blue-500/30',
-  RECEPTIONIST: 'bg-amber-500/20  text-amber-500  border-amber-500/30',
-  PATIENT:      'bg-rose-500/20   text-rose-500   border-rose-500/30',
-};
+import { useAuth } from '@/context/AuthContext';
+import { ROUTES } from '@/lib/constants';
+import { Role } from '@/types';
 
 export default function Login() {
   const router = useRouter();
-  const [userId, setUserId]         = useState('');
-  const [password, setPassword]     = useState('');
+  const { login } = useAuth();
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError]           = useState('');
-  const [loading, setLoading]       = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    await new Promise(r => setTimeout(r, 600));
-
-    const user = DUMMY_USERS.find(u => u.id === userId && u.pass === password);
-
-    if (user) {
-      localStorage.setItem('medicore_role', user.role);
-      localStorage.setItem('medicore_user', user.name);
-      router.push(`/${user.role.toLowerCase()}/dashboard`);
-    } else {
+    try {
+      const loggedInUser = await login({ username: username.trim(), password });
+      
+      const userRole = (loggedInUser.role?.toUpperCase() || 'PATIENT') as Role;
+      const targetRoute = ROUTES[userRole] || `/${userRole.toLowerCase()}/dashboard`;
+      
+      router.push(targetRoute);
+    } catch (err: unknown) {
       setLoading(false);
-      setError('Invalid credentials. Please try again.');
+      let errorMsg = 'Invalid username or password. Please try again.';
+      
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { detail?: string; message?: string } } };
+        if (axiosErr.response?.data?.detail) {
+          errorMsg = axiosErr.response.data.detail;
+        } else if (axiosErr.response?.data?.message) {
+          errorMsg = axiosErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+      
+      setError(errorMsg);
     }
-  };
-
-  const fillCredentials = (id: string, pass: string) => {
-    setUserId(id);
-    setPassword(pass);
-    setError('');
   };
 
   return (
     <div className="min-h-screen flex font-sans">
-
       <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12">
         <Image
           src="/back.webp"
@@ -107,7 +102,6 @@ export default function Login() {
 
       <div className="flex-1 flex items-center justify-center bg-[#F6F7F5] p-6 lg:p-12">
         <div className="w-full max-w-sm">
-
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <div className="w-8 h-8 bg-[#0E4749] rounded-lg flex items-center justify-center">
               <Activity className="w-4 h-4 text-white" />
@@ -117,28 +111,28 @@ export default function Login() {
 
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-            <p className="text-[#5B6472] text-sm mt-1">Sign in to access your portal</p>
+            <p className="text-[#5B6472] text-sm mt-1">Sign in to access your hospital portal</p>
           </div>
 
           {error && (
-            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-center gap-2.5">
+            <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-center gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-[#5B6472] uppercase tracking-wider mb-1.5">
-                Staff / Patient ID
+                Username / Staff ID
               </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  value={userId}
-                  onChange={e => setUserId(e.target.value)}
-                  placeholder="e.g. doctor"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. admin"
                   className="w-full pl-10 pr-4 py-3 border border-[#DCE3E0] rounded-xl focus:outline-none focus:border-[#0E4749] focus:ring-2 focus:ring-[#0E4749]/10 bg-white transition-all text-sm font-mono"
                   required
                 />
@@ -159,7 +153,7 @@ export default function Login() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pl-10 pr-11 py-3 border border-[#DCE3E0] rounded-xl focus:outline-none focus:border-[#0E4749] focus:ring-2 focus:ring-[#0E4749]/10 bg-white transition-all text-sm"
                   required
@@ -182,7 +176,7 @@ export default function Login() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  Authenticating...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
@@ -192,28 +186,9 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-[#DCE3E0]">
-            <p className="text-xs font-bold text-[#5B6472] uppercase tracking-wider text-center mb-3">
-              Quick Demo Login
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {DUMMY_USERS.map(u => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => fillCredentials(u.id, u.pass)}
-                  className={`text-left text-xs p-2.5 rounded-lg border transition-all hover:-translate-y-0.5 hover:shadow-sm ${ROLE_COLORS[u.role]}`}
-                >
-                  <div className="font-bold">{u.role}</div>
-                  <div className="font-mono opacity-70 mt-0.5">ID: {u.id}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <p className="text-center text-xs text-gray-400 mt-6">
             Need access?{' '}
-            <button className="font-semibold text-[#0E4749] hover:underline">Contact IT Support</button>
+            <button className="font-semibold text-[#0E4749] hover:underline">Contact Hospital IT</button>
           </p>
         </div>
       </div>
