@@ -20,13 +20,14 @@ const processQueue = (error: unknown, token: string | null = null) => {
 };
 
 export const getAccessToken = (): string | null => {
-  if (inMemoryToken) return inMemoryToken;
   if (typeof window !== 'undefined') {
-    inMemoryToken = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
-    return inMemoryToken;
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
+    inMemoryToken = stored;
+    return stored;
   }
-  return null;
+  return inMemoryToken;
 };
+
 
 export const setAccessToken = (token: string | null) => {
   inMemoryToken = token;
