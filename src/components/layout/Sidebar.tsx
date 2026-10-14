@@ -9,16 +9,24 @@ import {
   CalendarPlus, Pill, UserCircle, FileText, UserPlus, FileSearch, Grid, BookUser
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { role, userName, isLoaded, logout: authLogout } = useAuth();
+  const { role, userName, isLoaded, isAuthenticated, logout: authLogout } = useAuth();
 
-  if (!isLoaded) {
+  React.useEffect(() => {
+    if (isLoaded && !isAuthenticated) {
+      router.replace('/');
+    }
+  }, [isLoaded, isAuthenticated, router]);
+
+  if (!isLoaded || !isAuthenticated) {
     return null; 
   }
+
 
   const patientNavItems = [
     { href: "/patient/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -128,10 +136,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <input type="text" placeholder="Search MRN or name..." className="pl-9 pr-4 py-1.5 border border-[#DCE3E0] rounded-full text-sm w-64 focus:outline-none focus:border-[#0E4749]" />
               </div>
             )}
-            <button className="relative text-[#5B6472] hover:text-[#0E4749]">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-[#E07856] rounded-full"></span>
-            </button>
+            <NotificationBell />
           </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">

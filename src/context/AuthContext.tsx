@@ -30,10 +30,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setRole(null);
         setToken(null);
+        authService.clearSession();
       }
-    } else if (storedRole && storedUser) {
-      setRole(storedRole);
+    } else {
+      setUser(null);
+      setRole(null);
+      setToken(null);
+      authService.clearSession();
     }
+
 
     setIsLoading(false);
   }, []);
