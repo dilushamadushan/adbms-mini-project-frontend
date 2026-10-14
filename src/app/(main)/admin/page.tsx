@@ -1,5 +1,5 @@
 import React from 'react';
-import { AuditItem } from '@/components/features/admin/AuditItem';
+import { RecentAuditLogs } from '@/components/features/admin/RecentAuditLogs';
 
 export default function Admin() {
   return (
@@ -23,15 +23,8 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-[#DCE3E0] p-6 shadow-sm">
-        <h3 className="font-bold text-[#0E4749] mb-4">Recent Audit Logs</h3>
-        <div className="space-y-4">
-          <AuditItem user="Dr. Sarah Jenkins" action="Modified Patient Prescription" resource="MED_DB_09" risk="MEDIUM" time="2m ago" />
-          <AuditItem user="Nurse Michael Chen" action="Accessed Lab Result" resource="LAB_TESTS_V2" risk="LOW" time="15m ago" />
-          <AuditItem user="System Admin" action="Exported Department Load Report" resource="REPORTS_CORE" risk="LOW" time="42m ago" />
-          <AuditItem user="Database Service" action="Automatic Backup Failed" resource="BACKUP_NODE_A" risk="HIGH" time="1h ago" />
-        </div>
-      </div>
+      <RecentAuditLogs limit={4} />
     </div>
   );
 }
+
