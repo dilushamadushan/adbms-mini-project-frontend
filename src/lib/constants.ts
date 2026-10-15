@@ -3,8 +3,9 @@ import { Role } from '@/types';
 export const APP_CONFIG = {
   name: 'MediCore',
   version: '1.0.0',
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000',
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000',
 } as const;
+
 
 export const ROLES = {
   ADMIN: 'ADMIN',
