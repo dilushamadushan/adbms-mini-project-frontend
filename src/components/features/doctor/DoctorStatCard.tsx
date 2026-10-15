@@ -6,6 +6,8 @@ const TONES: Record<StatTone, { card: string; icon: string; Icon: typeof User }>
   green:  { card: 'bg-green-50/70 border-green-100',   icon: 'bg-green-100 text-green-600',   Icon: User },
   red:    { card: 'bg-red-50/70 border-red-100',       icon: 'bg-red-100 text-red-500',       Icon: BriefcaseMedical },
   purple: { card: 'bg-purple-50/70 border-purple-100', icon: 'bg-purple-100 text-purple-600', Icon: FileText },
+  yellow: { card: 'bg-amber-50/80 border-amber-200',   icon: 'bg-amber-100 text-amber-700',   Icon: CalendarPlus },
+  amber:  { card: 'bg-amber-50/80 border-amber-200',   icon: 'bg-amber-100 text-amber-700',   Icon: CalendarPlus },
 };
 
 export function DoctorStatCard({ title, value, subtext, tone }: Omit<DoctorStat, 'key'>) {

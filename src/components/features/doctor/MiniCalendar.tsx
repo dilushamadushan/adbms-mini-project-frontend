@@ -10,9 +10,10 @@ interface Props {
   selected: string;
   onSelect: (dateKey: string) => void;
   markedDates: Set<string>;
+  upcomingDates?: Set<string>;
 }
 
-export function MiniCalendar({ selected, onSelect, markedDates }: Props) {
+export function MiniCalendar({ selected, onSelect, markedDates, upcomingDates }: Props) {
   const now = new Date();
   const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const today = todayKey();
@@ -66,7 +67,8 @@ export function MiniCalendar({ selected, onSelect, markedDates }: Props) {
           const key = toDateKey(new Date(view.year, view.month, d));
           const isSelected = key === selected;
           const isToday = key === today;
-          const hasApt = markedDates.has(key);
+          const isUpcoming = upcomingDates?.has(key);
+          const hasApt = markedDates.has(key) || isUpcoming;
 
           return (
             <div key={i} className="flex justify-center">
@@ -74,12 +76,20 @@ export function MiniCalendar({ selected, onSelect, markedDates }: Props) {
                 type="button"
                 onClick={() => onSelect(key)}
                 className={`relative flex h-9 w-9 items-center justify-center rounded-full transition
-                  ${isSelected ? 'bg-blue-600 font-semibold text-white' : 'text-slate-700 hover:bg-slate-100'}
+                  ${isSelected ? 'bg-blue-600 font-semibold text-white' : isUpcoming ? 'bg-orange-50 font-semibold text-orange-900 hover:bg-orange-100' : 'text-slate-700 hover:bg-slate-100'}
                   ${isToday && !isSelected ? 'ring-2 ring-blue-300' : ''}`}
               >
                 {d}
                 {hasApt && (
-                  <span className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-500'}`} />
+                  <span
+                    className={`absolute bottom-1 h-1.5 w-1.5 rounded-full ${
+                      isSelected
+                        ? 'bg-white'
+                        : isUpcoming
+                        ? 'bg-orange-500'
+                        : 'bg-blue-500'
+                    }`}
+                  />
                 )}
               </button>
             </div>
@@ -87,9 +97,10 @@ export function MiniCalendar({ selected, onSelect, markedDates }: Props) {
         })}
       </div>
 
-      <div className="mt-4 flex items-center gap-4 text-xs text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Has appointments</span>
-        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full ring-2 ring-blue-300" /> Today</span>
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Today</span>
+        <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> Upcoming</span>
+        <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full ring-2 ring-blue-300" /> Current Day</span>
       </div>
     </section>
   );

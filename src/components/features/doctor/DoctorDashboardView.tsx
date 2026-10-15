@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { doctorService } from '@/services/doctorService';
 import { useDoctorAppointments } from '@/hooks/useDoctorAppointments';
 import { useDoctorHistory } from '@/hooks/useDoctorHistory';
+import { useDoctorUpcoming } from '@/hooks/useDoctorUpcoming';
 import { formatDateLabel, todayKey } from '@/lib/dateUtils';
 import type { DoctorAppointment, DoctorStat } from '@/types/doctor';
 import { GreetingBanner } from './GreetingBanner';
@@ -15,6 +16,7 @@ import { MiniCalendar } from './MiniCalendar';
 export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number; doctorName: string }) {
   const { data, loading, error } = useDoctorAppointments(doctorId);
   const { data: historyData } = useDoctorHistory(doctorId);
+  const { data: upcomingData } = useDoctorUpcoming(doctorId);
   const [totalAppointments, setTotalAppointments] = useState<number | string>('—');
   const today = todayKey();
   const [selected, setSelected] = useState(today);
@@ -34,7 +36,12 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
     };
   }, [doctorId]);
 
-  // date -> appointments (sorted by time)
+  // Upcoming dates set
+  const upcomingDates = useMemo(() => {
+    return new Set(upcomingData.map((a) => a.date));
+  }, [upcomingData]);
+
+  // date -> appointments (merged today's + upcoming, sorted by time)
   const byDate = useMemo(() => {
     const map = new Map<string, DoctorAppointment[]>();
     data.forEach((a) => {
@@ -42,23 +49,41 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
       list.push(a);
       map.set(a.date, list);
     });
+    upcomingData.forEach((a) => {
+      const list = map.get(a.date) ?? [];
+      if (!list.some((item) => item.id === a.id)) {
+        list.push(a);
+      }
+      map.set(a.date, list);
+    });
     map.forEach((list) => list.sort((x, y) => x.timeSlot.localeCompare(y.timeSlot)));
     return map;
-  }, [data]);
+  }, [data, upcomingData]);
 
-  const markedDates = useMemo(() => new Set(byDate.keys()), [byDate]);
+  const markedDates = useMemo(() => new Set(data.map((a) => a.date)), [data]);
 
   const selectedList = byDate.get(selected) ?? [];
-  const todayList = byDate.get(today) ?? [];
+  const isToday = selected === today;
+  const isUpcoming = upcomingDates.has(selected);
 
   const stats: DoctorStat[] = [
     { key: 'today', title: "Today's Appointments", value: totalAppointments, subtext: '', tone: 'blue' },
     { key: 'patients', title: 'Total Patients', value: '—', subtext: '', tone: 'green' },
-    { key: 'upcoming', title: 'Upcoming', value: '—', subtext: '', tone: 'red' },
+    { key: 'upcoming', title: 'Upcoming', value: upcomingData ? upcomingData.length : 0, subtext: '', tone: 'yellow' },
     { key: 'completed', title: 'Completed', value: '—', subtext: '', tone: 'purple' },
   ];
 
-  const title = selected === today ? "Today's Appointments" : `Appointments · ${formatDateLabel(selected)}`;
+  const title = isToday
+    ? "Today's Appointments"
+    : isUpcoming
+    ? "Upcoming Appointments"
+    : `Appointments · ${formatDateLabel(selected)}`;
+
+  const emptyText = isToday
+    ? 'No appointments today.'
+    : isUpcoming
+    ? 'No upcoming appointments on this date.'
+    : 'No appointments on this date.';
 
   return (
     <div className="space-y-6">
@@ -78,13 +103,19 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
           <AppointmentsTable
             title={title}
             items={selectedList}
-            emptyText={selected === today ? 'No appointments today.' : 'No appointments on this date.'}
+            emptyText={emptyText}
+            isUpcoming={isUpcoming}
           />
           <RecentPatients items={historyData} />
         </div>
 
         <aside className="space-y-6">
-          <MiniCalendar selected={selected} onSelect={setSelected} markedDates={markedDates} />
+          <MiniCalendar
+            selected={selected}
+            onSelect={setSelected}
+            markedDates={markedDates}
+            upcomingDates={upcomingDates}
+          />
         </aside>
       </div>
     </div>
