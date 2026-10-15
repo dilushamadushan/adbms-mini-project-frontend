@@ -2,9 +2,7 @@ import apiClient from '@/lib/apiClient';
 import { WorkloadSummaryResponse, WorkloadSummaryParams, KpiOverviewResponse } from '@/types';
 
 export const reportService = {
-  /**
-   * Fetch hospital KPI overview — total patients, bed occupancy, today's appointments
-   */
+
   getKpiOverview: async (date?: string): Promise<KpiOverviewResponse> => {
     const response = await apiClient.get<KpiOverviewResponse>('/reports/kpi-overview', {
       params: date ? { date } : undefined,
@@ -12,9 +10,7 @@ export const reportService = {
     return response.data;
   },
 
-  /**
-   * Fetch combined workload summary (Department Workload + Top Provider Workload)
-   */
+
   getWorkloadSummary: async (params?: WorkloadSummaryParams): Promise<WorkloadSummaryResponse> => {
     const response = await apiClient.get<WorkloadSummaryResponse>('/reports/workload-summary', {
       params,
@@ -22,17 +18,13 @@ export const reportService = {
     return response.data;
   },
 
-  /**
-   * Fetch department workload only
-   */
+
   getDepartmentWorkload: async (): Promise<{ total_departments: number; departments: any[] }> => {
     const response = await apiClient.get('/reports/departments/workload');
     return response.data;
   },
 
-  /**
-   * Fetch top provider workload only
-   */
+
   getProviderWorkload: async (limit = 5): Promise<{ total_providers_ranked: number; providers: any[] }> => {
     const response = await apiClient.get('/reports/providers/workload', {
       params: { limit },
@@ -40,13 +32,10 @@ export const reportService = {
     return response.data;
   },
 
-  /**
-   * Generate and trigger browser download of Workload CSV report
-   */
+
   downloadWorkloadCsv: (data: WorkloadSummaryResponse, filename = 'hospital_workload_report.csv') => {
     const lines: string[] = [];
 
-    // Header & Department Workload section
     lines.push('=== HOSPITAL WORKLOAD REPORT ===');
     lines.push(`Generated At: ${new Date().toLocaleString()}`);
     lines.push('');

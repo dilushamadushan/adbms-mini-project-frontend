@@ -69,17 +69,14 @@ export function NotificationBell() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch quick unread count
   const fetchUnreadCount = useCallback(async () => {
     try {
       const count = await notificationService.getUnreadCount(role || undefined);
       setUnreadCount(count);
     } catch {
-      // ignore badge network failures silently
     }
   }, [role]);
 
-  // Fetch notifications list
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
@@ -97,21 +94,18 @@ export function NotificationBell() {
     }
   }, [role, filter]);
 
-  // Initial & periodic badge polling (every 30s)
   useEffect(() => {
     fetchUnreadCount();
     const interval = setInterval(fetchUnreadCount, 30_000);
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
-  // Fetch items when dropdown opens or filter toggles
   useEffect(() => {
     if (isOpen) {
       fetchNotifications();
     }
   }, [isOpen, fetchNotifications]);
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -124,7 +118,6 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Handlers
   const handleMarkAsRead = async (id: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
     try {
@@ -167,7 +160,6 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* ── Bell Icon Button ── */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         className="relative p-2 rounded-full text-[#5B6472] hover:text-[#0E4749] hover:bg-gray-100 transition-colors focus:outline-none"
@@ -177,7 +169,6 @@ export function NotificationBell() {
       >
         <Bell className="w-5 h-5" />
 
-        {/* Unread Count Badge */}
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 bg-[#E07856] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -185,10 +176,8 @@ export function NotificationBell() {
         )}
       </button>
 
-      {/* ── Popover Dropdown ── */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-[#DCE3E0] z-50 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
-          {/* Header */}
           <div className="p-4 border-b border-[#DCE3E0] bg-gray-50/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-[#0E4749] text-sm">Notifications</h3>
@@ -227,7 +216,6 @@ export function NotificationBell() {
             </div>
           </div>
 
-          {/* Filter Tabs */}
           <div className="flex border-b border-[#DCE3E0] bg-white text-xs font-semibold">
             <button
               onClick={() => setFilter('ALL')}
@@ -251,7 +239,6 @@ export function NotificationBell() {
             </button>
           </div>
 
-          {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto divide-y divide-[#DCE3E0]/60">
             {loading && notifications.length === 0 ? (
               <div className="p-4 space-y-3">
@@ -289,12 +276,10 @@ export function NotificationBell() {
                       !n.is_read ? 'bg-teal-50/40' : ''
                     }`}
                   >
-                    {/* Type icon wrap */}
                     <div className="w-8 h-8 rounded-full bg-white border border-[#DCE3E0] shadow-2xs flex items-center justify-center flex-shrink-0 mt-0.5">
                       {getNotificationIcon(n.type)}
                     </div>
 
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
                         <p className={`text-xs ${!n.is_read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
@@ -309,7 +294,6 @@ export function NotificationBell() {
                         {n.message}
                       </p>
 
-                      {/* Expandable details if present */}
                       {hasDetails && isExpanded && (
                         <div className="mt-2 p-2 bg-gray-50 rounded text-[11px] font-mono text-gray-700 border border-gray-200 space-y-1">
                           {Object.entries(n.details || {}).map(([key, val]) => (
@@ -321,7 +305,6 @@ export function NotificationBell() {
                         </div>
                       )}
 
-                      {/* Footer micro-actions */}
                       <div className="flex items-center justify-between mt-1.5 pt-1">
                         {hasDetails ? (
                           <span className="text-[10px] text-[#0E4749] font-medium flex items-center gap-0.5">
@@ -352,7 +335,6 @@ export function NotificationBell() {
                       </div>
                     </div>
 
-                    {/* Unread dot */}
                     {!n.is_read && (
                       <span className="w-2 h-2 rounded-full bg-[#E07856] flex-shrink-0 mt-1.5" />
                     )}
