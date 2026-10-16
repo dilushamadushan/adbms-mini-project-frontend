@@ -18,6 +18,8 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
   const { data: historyData } = useDoctorHistory(doctorId);
   const { data: upcomingData } = useDoctorUpcoming(doctorId);
   const [totalAppointments, setTotalAppointments] = useState<number | string>('—');
+  const [completedAppointments, setCompletedAppointments] = useState<number | string>('—');
+  const [totalPatients, setTotalPatients] = useState<number | string>('—');
   const today = todayKey();
   const [selected, setSelected] = useState(today);
 
@@ -31,6 +33,25 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
       .catch((err) => {
         console.error('Failed to get appointment count:', err);
       });
+
+    doctorService
+      .getCompletedAppointmentCount(doctorId)
+      .then((count) => {
+        if (active) setCompletedAppointments(count);
+      })
+      .catch((err) => {
+        console.error('Failed to get completed appointment count:', err);
+      });
+
+    doctorService
+      .getTotalPatientsCount(doctorId)
+      .then((count) => {
+        if (active) setTotalPatients(count);
+      })
+      .catch((err) => {
+        console.error('Failed to get total patients count:', err);
+      });
+
     return () => {
       active = false;
     };
@@ -68,9 +89,9 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
 
   const stats: DoctorStat[] = [
     { key: 'today', title: "Today's Appointments", value: totalAppointments, subtext: '', tone: 'blue' },
-    { key: 'patients', title: 'Total Patients', value: '—', subtext: '', tone: 'green' },
+    { key: 'patients', title: 'Total Patients', value: totalPatients, subtext: '', tone: 'green' },
     { key: 'upcoming', title: 'Upcoming', value: upcomingData ? upcomingData.length : 0, subtext: '', tone: 'yellow' },
-    { key: 'completed', title: 'Completed', value: '—', subtext: '', tone: 'purple' },
+    { key: 'completed', title: 'Completed Today', value: completedAppointments, subtext: '', tone: 'purple' },
   ];
 
   const title = isToday
