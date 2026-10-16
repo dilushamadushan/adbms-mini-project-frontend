@@ -5,13 +5,15 @@ export interface ApiAppointment {
     patient_id: number;
     patient_name: string;
     dob?: string | null;
+    age?: number | string | null;
     blood_group?: string | null;
     allergies?: string | null;
-    dept_id: number;
-    dept_name: string;
+    dept_id?: number;
+    dept_name?: string;
     apt_date: string;   // "2026-10-13"
     time_slot: string;  // "10:00"
     status: string;     // "Scheduled" | "Completed" | ...
+    reason?: string | null;
 }
 
 export interface DoctorAppointment {
@@ -21,14 +23,15 @@ export interface DoctorAppointment {
     time: string;        // display "10:00 AM"
     patientId: string;
     patientName: string;
-    age: number;
+    age: number | string;
     bloodGroup: string;
     allergies: string;
     reason: string;      // department name
     status: AppointmentStatus;
 }
 
-export type StatTone = 'blue' | 'green' | 'red' | 'purple';
+export type StatTone = 'blue' | 'green' | 'red' | 'purple' | 'yellow' | 'amber';
+
 
 export interface DoctorStat {
     key: string;

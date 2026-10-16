@@ -3,8 +3,10 @@ export const toDateKey = (d: Date) =>
 
 export const todayKey = () => toDateKey(new Date());
 
-export function calcAge(dob: string) {
+export function calcAge(dob?: string | null): number | string {
+    if (!dob) return '—';
     const b = new Date(dob);
+    if (isNaN(b.getTime())) return '—';
     const n = new Date();
     let age = n.getFullYear() - b.getFullYear();
     const m = n.getMonth() - b.getMonth();
@@ -12,7 +14,8 @@ export function calcAge(dob: string) {
     return age;
 }
 
-export function formatTime(slot: string) {
+export function formatTime(slot?: string | null) {
+    if (!slot) return '—';
     const [h, m] = slot.split(':').map(Number);
     const h12 = h % 12 || 12;
     return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;

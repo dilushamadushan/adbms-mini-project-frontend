@@ -1,8 +1,13 @@
-import { doctor } from '@/lib/doctorDashboard';
+'use client';
+
+import { useAuth } from '@/hooks/useAuth';
 import { DoctorDashboardView } from '@/components/features/doctor/DoctorDashboardView';
 
-const DOCTOR_ID = 4; // TODO: replace with the logged-in doctor's id (from useAuth)
 
 export default function DoctorDashboard() {
-  return <DoctorDashboardView doctorId={DOCTOR_ID} doctorName={doctor.name} />;
+  const { user, isLoading } = useAuth();
+
+  if (isLoading || !user) return <p className="text-sm text-slate-500">Loading…</p>;
+
+return <DoctorDashboardView doctorId={Number(user.user_id)} doctorName={user.username} />;
 }
