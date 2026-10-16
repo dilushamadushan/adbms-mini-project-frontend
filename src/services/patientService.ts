@@ -13,12 +13,37 @@ export interface PatientProfile {
   blood_group: string | null;
   emergency_contact: string | null;
   allergies: string | null;
+  created_at?: string | null;
+}
+
+export interface RegisterPatientPayload {
+  first_name: string;
+  last_name: string;
+  email: string;
+  dob: string;
+  blood_group: string | null;
+  emergency_contact: string;
+  allergies: string;
+}
+
+export interface RegisteredPatient extends PatientProfile {
+  raw_password: string | null;
 }
 
 export const patientService = {
 
   getMyProfile: async (): Promise<PatientProfile> => {
     const response = await apiClient.get<PatientProfile>('/users/patient/me');
+    return response.data;
+  },
+
+  register: async (payload: RegisterPatientPayload): Promise<RegisteredPatient> => {
+    const response = await apiClient.post<RegisteredPatient>('/users/patient', payload);
+    return response.data;
+  },
+
+  getReceptionistRecords: async (search?: string): Promise<PatientProfile[]> => {
+    const response = await apiClient.get<PatientProfile[]>('/users/records', { params: { search } });
     return response.data;
   },
   
