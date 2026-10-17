@@ -48,6 +48,18 @@ export const doctorService = {
         return res.data;
     },
 
+    getCompletedAppointmentCount: async (doctorId: number): Promise<number> => {
+        const url = `/doctor/appointment-count-completed/${doctorId}`;
+        const res = await apiClient.get<number>(url);
+        return res.data;
+    },
+
+    getTotalPatientsCount: async (doctorId: number): Promise<number> => {
+        const url = `/doctor/patients-count/${doctorId}`;
+        const res = await apiClient.get<number>(url);
+        return res.data;
+    },
+
     getAppointmentHistory: async (doctorId: number): Promise<DoctorAppointment[]> => {
         const res = await apiClient.get<ApiAppointment[]>(`/doctor/appointment-history/${doctorId}`);
         return (res.data || []).map(mapAppointment);
