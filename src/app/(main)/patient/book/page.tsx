@@ -73,9 +73,14 @@ export default function BookAppointment() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
 
+  // Minimum allowed date is today
+  const minAllowedDate = useMemo(() => {
+    return toDateKey(new Date());
+  }, []);
+
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [selectedTime, setSelectedTime] = useState('');
 
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -88,12 +93,10 @@ export default function BookAppointment() {
   const [rescheduleId, setRescheduleId] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Minimum allowed date is at least 2 days ahead of current date
-  const minAllowedDate = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 2);
-    return toDateKey(d);
-  }, []);
+
+  const isSelectedDateToday = useMemo(() => {
+    return selectedDate === minAllowedDate;
+  }, [selectedDate, minAllowedDate]);
 
   const loadBookingData = useCallback(async () => {
     setCatalogLoading(true);
@@ -243,14 +246,10 @@ export default function BookAppointment() {
       return;
     }
 
-    // 2. Validate date: must be at least 2 days after current date
-    const chosenDate = new Date(`${selectedDate}T00:00:00`);
-    const earliestAllowed = new Date();
-    earliestAllowed.setDate(earliestAllowed.getDate() + 2);
-    earliestAllowed.setHours(0, 0, 0, 0);
-
-    if (chosenDate < earliestAllowed) {
-      setSlotsError('Appointment date must be at least 2 days after the current date.');
+    // 2. Validate date: cannot be in the past
+    const todayKey = toDateKey(new Date());
+    if (selectedDate < todayKey) {
+      setSlotsError('Appointment date cannot be in the past.');
       setAvailableSlots([]);
       setSelectedTime('');
       return;
@@ -300,6 +299,13 @@ export default function BookAppointment() {
   function handleBookClick() {
     if (!user?.user_id || !selectedDoctor || !selectedDepartment || !selectedDate || !selectedTime) {
       const msg = 'Please select department, doctor, date, and available time slot.';
+      setBookingError(msg);
+      toast.error(msg);
+      return;
+    }
+    const todayKey = toDateKey(new Date());
+    if (selectedDate < todayKey) {
+      const msg = 'Appointment date cannot be in the past.';
       setBookingError(msg);
       toast.error(msg);
       return;
@@ -508,12 +514,38 @@ export default function BookAppointment() {
 
               {/* Appointment Date */}
               <div>
-                <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                    <Calendar className="h-4 w-4" />
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <Calendar className="h-4 w-4" />
+                    </div>
+                    Appointment Date
+                  </label>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(minAllowedDate)}
+                      className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                        selectedDate === minAllowedDate
+                          ? 'bg-[#0E8B8B] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tmrw = new Date();
+                        tmrw.setDate(tmrw.getDate() + 1);
+                        setSelectedDate(toDateKey(tmrw));
+                      }}
+                      className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600 transition hover:bg-slate-200"
+                    >
+                      Tomorrow
+                    </button>
                   </div>
-                  Appointment Date
-                </label>
+                </div>
                 <div className="relative">
                   <input
                     type="date"
@@ -523,6 +555,9 @@ export default function BookAppointment() {
                     className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-medium text-slate-800 transition focus:border-[#0E8B8B] focus:outline-none focus:ring-1 focus:ring-[#0E8B8B]"
                   />
                 </div>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Appointments must be booked at least 2 hours in advance.
+                </p>
               </div>
 
               {bookingError && (
@@ -652,6 +687,8 @@ export default function BookAppointment() {
                 <p className="rounded-xl bg-slate-50 p-4 text-center text-xs text-slate-500">
                   {!selectedDoctor || !selectedDepartment
                     ? 'Please select a department and doctor to see available slots.'
+                    : isSelectedDateToday
+                    ? 'No slots available for today. Please choose another date.'
                     : 'No available slots remaining for this doctor on this date.'}
                 </p>
               ) : (
