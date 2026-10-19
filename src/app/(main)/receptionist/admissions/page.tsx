@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Hospital } from 'lucide-react';
+import Link from 'next/link';
 import { receptionistService, type AdmissionRecord } from '@/services/receptionistService';
 
 function toDateInputValue(date: Date): string {
@@ -14,13 +15,6 @@ function toDateInputValue(date: Date): string {
 function getAdmissionDate(admittedAt: string): string {
   const date = new Date(admittedAt);
   return toDateInputValue(date);
-}
-
-function getStayDays(admittedAt: string, dischargeDate: string): number {
-  const admittedDate = new Date(`${getAdmissionDate(admittedAt)}T00:00:00`);
-  const selectedDate = new Date(`${dischargeDate}T00:00:00`);
-  const difference = selectedDate.getTime() - admittedDate.getTime();
-  return Math.max(1, Math.floor(difference / 86_400_000) + 1);
 }
 
 export default function ReceptionistAdmissions() {
@@ -47,10 +41,6 @@ export default function ReceptionistAdmissions() {
     setError('');
   }
 
-  const stayDays = selectedAdmission
-    ? getStayDays(selectedAdmission.admitted_at, dischargeDate)
-    : 0;
-
   return (
     <div className="space-y-6">
       <header>
@@ -64,8 +54,8 @@ export default function ReceptionistAdmissions() {
       {isLoading ? (
         <p className="rounded-xl border border-[#DCE3E0] bg-white p-6 text-sm text-[#5B6472]">Loading discharge authorizations…</p>
       ) : selectedAdmission ? (
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,2fr)]">
-          <section className="min-w-0 space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
+        <section className="max-w-3xl space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => setSelectedAdmission(null)}
@@ -74,56 +64,44 @@ export default function ReceptionistAdmissions() {
               <ArrowLeft className="h-4 w-4" />
               Back to authorized patients
             </button>
+          </div>
 
-            <div className="border-b border-[#E8EDEA] pb-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Discharge form</p>
-              <h3 className="mt-1 text-xl font-bold text-[#0E4749]">{selectedAdmission.patient_name}</h3>
-              <p className="mt-1 text-sm text-[#5B6472]">Review the admission details and select the discharge date.</p>
-            </div>
+          <div className="border-b border-[#E8EDEA] pb-4">
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Discharge form</p>
+            <h3 className="mt-1 text-xl font-bold text-[#0E4749]">{selectedAdmission.patient_name}</h3>
+            <p className="mt-1 text-sm text-[#5B6472]">Review the admission details and select the discharge date.</p>
+          </div>
 
-            <section aria-label="Admission details" className="space-y-4 rounded-xl bg-[#F6F8F7] p-5">
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Ward</span><strong className="mt-1 block">{selectedAdmission.ward_name}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Bed</span><strong className="mt-1 block">{selectedAdmission.bed_number || 'Not assigned'}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Gender</span><strong className="mt-1 block">{selectedAdmission.gender || 'Not recorded'}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admitting doctor</span><strong className="mt-1 block">{selectedAdmission.admitted_doctor_name}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admission date</span><strong className="mt-1 block">{new Date(selectedAdmission.admitted_at).toLocaleDateString()}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Guardian</span><strong className="mt-1 block">{selectedAdmission.guardian_name} ({selectedAdmission.guardian_relationship})</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admission reason</span><strong className="mt-1 block">{selectedAdmission.admission_reason}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Doctor&apos;s discharge notes</span><strong className="mt-1 block">{selectedAdmission.discharge_notes || 'No notes provided'}</strong></p>
-            </section>
-
-            <label htmlFor="discharge-date" className="block text-sm font-semibold">
-              Discharge date
-              <input
-                id="discharge-date"
-                required
-                type="date"
-                min={getAdmissionDate(selectedAdmission.admitted_at)}
-                value={dischargeDate}
-                onChange={(event) => setDischargeDate(event.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"
-              />
-            </label>
+          <section aria-label="Admission details" className="space-y-4 rounded-xl bg-[#F6F8F7] p-5">
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Ward</span><strong className="mt-1 block">{selectedAdmission.ward_name}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Bed</span><strong className="mt-1 block">{selectedAdmission.bed_number || 'Not assigned'}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Gender</span><strong className="mt-1 block">{selectedAdmission.gender || 'Not recorded'}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admitting doctor</span><strong className="mt-1 block">{selectedAdmission.admitted_doctor_name}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admission date</span><strong className="mt-1 block">{new Date(selectedAdmission.admitted_at).toLocaleDateString()}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Guardian</span><strong className="mt-1 block">{selectedAdmission.guardian_name} ({selectedAdmission.guardian_relationship})</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Admission reason</span><strong className="mt-1 block">{selectedAdmission.admission_reason}</strong></p>
+            <p className="text-sm"><span className="block text-xs text-[#5B6472]">Doctor&apos;s discharge notes</span><strong className="mt-1 block">{selectedAdmission.discharge_notes || 'No notes provided'}</strong></p>
           </section>
 
-          <aside className="min-w-0 space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
-            <div className="border-b border-[#E8EDEA] pb-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Bill</p>
-              <h3 className="mt-1 text-xl font-bold text-[#0E4749]">Discharge bill</h3>
-              <p className="mt-1 text-sm text-[#5B6472]">Charges will be calculated using the configured ward rate and selected services.</p>
-            </div>
-
-            <div className="space-y-4 rounded-xl bg-[#F6F8F7] p-5">
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Patient</span><strong className="mt-1 block">{selectedAdmission.patient_name}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Ward</span><strong className="mt-1 block">{selectedAdmission.ward_name}</strong></p>
-              <p className="text-sm"><span className="block text-xs text-[#5B6472]">Length of stay</span><strong className="mt-1 block text-lg text-[#0E4749]">{stayDays} {stayDays === 1 ? 'day' : 'days'}</strong></p>
-            </div>
-
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              Bill items, total, payment, printing, and discharge completion will be enabled after ward rates and service prices are configured.
-            </div>
-          </aside>
-        </div>
+          <label htmlFor="discharge-date" className="block text-sm font-semibold">
+            Discharge date
+            <input
+              id="discharge-date"
+              required
+              type="date"
+              min={getAdmissionDate(selectedAdmission.admitted_at)}
+              value={dischargeDate}
+              onChange={(event) => setDischargeDate(event.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"
+            />
+          </label>
+          <Link
+            href={`/templates/bill?patient_id=${selectedAdmission.patient_id}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#E07856] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#c96749]"
+          >
+            Prepare bill
+          </Link>
+        </section>
       ) : admissions.length ? (
         <section className="space-y-3">
           <h3 className="font-bold text-[#0E4749]">Authorized for discharge</h3>

@@ -67,7 +67,7 @@ export default function ReceptionistAdmit() {
     const query = patientQuery.trim().toLocaleLowerCase();
     if (!query) return [];
     return patients.filter((patient) => (
-      `${patient.first_name} ${patient.last_name}`.toLocaleLowerCase().startsWith(query)
+      `${patient.first_name} ${patient.last_name}`.toLocaleLowerCase().includes(query)
     )).slice(0, 8);
   }, [patients, patientQuery]);
 

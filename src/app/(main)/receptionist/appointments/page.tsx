@@ -26,6 +26,8 @@ export default function ReceptionistAppointments() {
   const [appointments, setAppointments] = useState<RecepAppointmentRecord[]>([]);
   const [filterDate, setFilterDate] = useState('');
   const [patientId, setPatientId] = useState('');
+  const [patientQuery, setPatientQuery] = useState('');
+  const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
   const [departmentId, setDepartmentId] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [date, setDate] = useState(todayKey());
@@ -55,6 +57,14 @@ export default function ReceptionistAppointments() {
     && String(member.dept_id ?? '') === departmentId
     && member.is_active !== false && member.is_active !== 0
   )), [staff, departmentId]);
+
+  const matchingPatients = useMemo(() => {
+    const query = patientQuery.trim().toLocaleLowerCase();
+    if (!query) return [];
+    return patients.filter((patient) => (
+      `${patient.first_name} ${patient.last_name}`.toLocaleLowerCase().includes(query)
+    ));
+  }, [patients, patientQuery]);
 
   function loadAppointments() {
     return receptionistService.getAppointments({ date: filterDate || undefined })
@@ -105,6 +115,7 @@ export default function ReceptionistAppointments() {
         `Appointment booked successfully for ${createdAppointment.patient_name} with ${createdAppointment.doctor_name} on ${createdAppointment.apt_date} at ${displayTime(createdAppointment.time_slot)}.`,
       );
       setPatientId('');
+      setPatientQuery('');
       await loadAppointments();
     } catch {
       setError('Booking failed. Confirm the patient, department, doctor, date, and available time.');
@@ -129,6 +140,8 @@ export default function ReceptionistAppointments() {
       });
       setPatients((current) => [...current, createdPatient]);
       setPatientId(String(createdPatient.patient_id));
+      setPatientQuery(`${createdPatient.first_name} ${createdPatient.last_name}`);
+      setShowPatientSuggestions(false);
       setNewPatient({
         first_name: '',
         last_name: '',
@@ -181,9 +194,46 @@ export default function ReceptionistAppointments() {
           <h3 className="text-lg font-bold text-[#0E4749]">Book an appointment</h3>
           <p className="mt-1 text-sm font-normal text-[#5B6472]">Choose a patient, department, doctor, date, and time.</p>
         </div>
-        <label className="text-sm font-semibold">Patient
-          <select required value={patientId} onChange={(event) => setPatientId(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"><option value="">Select patient</option>{patients.map((p) => <option key={p.patient_id} value={p.patient_id}>{p.first_name} {p.last_name}</option>)}</select>
-        </label>
+        <div className="relative">
+          <label htmlFor="appointment-patient" className="block text-sm font-semibold">Patient
+            <input
+              id="appointment-patient"
+              required
+              autoComplete="off"
+              value={patientQuery}
+              onFocus={() => setShowPatientSuggestions(true)}
+              onChange={(event) => {
+                setPatientQuery(event.target.value);
+                setPatientId('');
+                setShowPatientSuggestions(true);
+              }}
+              placeholder="Patient name"
+              className="mt-2 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"
+            />
+          </label>
+          {showPatientSuggestions && patientQuery.trim() && (
+            <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[#DCE3E0] bg-white py-1 shadow-lg">
+              {matchingPatients.length ? matchingPatients.map((patient) => (
+                <li key={patient.patient_id}>
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setPatientId(String(patient.patient_id));
+                      setPatientQuery(`${patient.first_name} ${patient.last_name}`);
+                      setShowPatientSuggestions(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50"
+                  >
+                    {patient.first_name} {patient.last_name}
+                  </button>
+                </li>
+              )) : (
+                <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient found.</li>
+              )}
+            </ul>
+          )}
+        </div>
         <label className="text-sm font-semibold">Department
           <select required value={departmentId} onChange={(event) => { setDepartmentId(event.target.value); setDoctorId(''); }} className="mt-2 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"><option value="">Select department</option>{departments.map((d) => <option key={d.dept_id} value={d.dept_id}>{d.dept_name}</option>)}</select>
         </label>
