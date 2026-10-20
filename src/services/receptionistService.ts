@@ -156,9 +156,13 @@ export const receptionistService = {
     return response.data;
   },
 
-  getAppointments: async (params?: { patientId?: number; date?: string }): Promise<RecepAppointmentRecord[]> => {
+  getAppointments: async (params?: { patientId?: number; date?: string; patientName?: string }): Promise<RecepAppointmentRecord[]> => {
     const response = await apiClient.get<RecepAppointmentRecord[]>('/receptionist/appointments', {
-      params: { patient_id: params?.patientId, date: params?.date },
+      params: {
+        patient_id: params?.patientId,
+        date: params?.date,
+        patient_name: params?.patientName,
+      },
     });
     return response.data;
   },

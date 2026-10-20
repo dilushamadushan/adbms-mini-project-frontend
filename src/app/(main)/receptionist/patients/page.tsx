@@ -30,11 +30,11 @@ export default function ReceptionistPatientRecords() {
       </header>
       <label className="relative block max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5B6472]" />
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search patient name, email, username, or ID" className="w-full rounded-lg border border-[#DCE3E0] bg-white py-3 pl-10 pr-4 text-sm focus:border-[#0E4749] focus:outline-none" />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by patient name" className="w-full rounded-lg border border-[#DCE3E0] bg-white py-3 pl-10 pr-4 text-sm focus:border-[#0E4749] focus:outline-none" />
       </label>
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
       <section className="overflow-x-auto rounded-xl border border-[#DCE3E0] bg-white">
-        {isLoading ? <p className="p-5 text-sm text-[#5B6472]">Searching patient records…</p> : patients.length ? (
+        {isLoading ? <p className="p-5 text-sm text-[#5B6472]">Loading patient records…</p> : patients.length ? (
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-[#5B6472]"><tr><th className="p-4">Patient</th><th className="p-4">DOB</th><th className="p-4">Blood group</th><th className="p-4">Emergency contact</th><th className="p-4">Allergies</th><th className="p-4">Email</th></tr></thead>
             <tbody className="divide-y divide-[#DCE3E0]">

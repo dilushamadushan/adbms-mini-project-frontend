@@ -25,6 +25,7 @@ export default function ReceptionistAppointments() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [appointments, setAppointments] = useState<RecepAppointmentRecord[]>([]);
   const [filterDate, setFilterDate] = useState('');
+  const [filterPatientName, setFilterPatientName] = useState('');
   const [patientId, setPatientId] = useState('');
   const [patientQuery, setPatientQuery] = useState('');
   const [showPatientSuggestions, setShowPatientSuggestions] = useState(false);
@@ -49,6 +50,7 @@ export default function ReceptionistAppointments() {
   const [error, setError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshingAppointments, setIsRefreshingAppointments] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingPatient, setSavingPatient] = useState(false);
 
@@ -66,19 +68,30 @@ export default function ReceptionistAppointments() {
     ));
   }, [patients, patientQuery]);
 
-  function loadAppointments() {
-    return receptionistService.getAppointments({ date: filterDate || undefined })
-      .then(setAppointments)
-      .catch(() => setError('Appointments could not be loaded.'));
+  async function loadAppointments(date = filterDate, patientName = filterPatientName) {
+    setError('');
+    setIsRefreshingAppointments(true);
+    try {
+      setAppointments(await receptionistService.getAppointments({
+        date: date || undefined,
+        patientName: patientName.trim() || undefined,
+      }));
+    } catch {
+      setError('Appointments could not be loaded.');
+    } finally {
+      setIsRefreshingAppointments(false);
+    }
   }
 
   async function applyDateFilter(value: string) {
     setFilterDate(value);
-    try {
-      setAppointments(await receptionistService.getAppointments({ date: value || undefined }));
-    } catch {
-      setError('Appointments could not be loaded.');
-    }
+    await loadAppointments(value, filterPatientName);
+  }
+
+  async function refreshAllAppointments() {
+    setFilterDate('');
+    setFilterPatientName('');
+    await loadAppointments('', '');
   }
 
   useEffect(() => {
@@ -289,7 +302,14 @@ export default function ReceptionistAppointments() {
       <section className="overflow-hidden rounded-xl border border-[#DCE3E0] bg-white">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#DCE3E0] p-5">
           <div><h3 className="font-bold text-[#0E4749]">Appointment list</h3><p className="mt-1 text-xs text-[#5B6472]">Leave the date blank to view all appointments.</p></div>
-          <label className="text-xs font-semibold text-[#5B6472]">Filter date<input type="date" value={filterDate} onChange={(event) => void applyDateFilter(event.target.value)} className="ml-2 rounded-lg border border-[#DCE3E0] p-2 text-sm text-gray-900" /></label>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-xs font-semibold text-[#5B6472]">Filter date<input type="date" value={filterDate} onChange={(event) => void applyDateFilter(event.target.value)} className="mt-1 block rounded-lg border border-[#DCE3E0] p-2 text-sm text-gray-900" /></label>
+            <label className="text-xs font-semibold text-[#5B6472]">Patient name<input type="search" value={filterPatientName} onChange={(event) => setFilterPatientName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadAppointments(); }} placeholder="Search patient name" className="mt-1 block rounded-lg border border-[#DCE3E0] p-2 text-sm text-gray-900" /></label>
+            <button type="button" onClick={() => void refreshAllAppointments()} disabled={isLoading || isRefreshingAppointments} className="inline-flex items-center gap-2 rounded-lg bg-[#0E4749] px-3 py-2 text-sm font-semibold text-white hover:bg-[#093234] disabled:cursor-not-allowed disabled:opacity-50">
+              <RefreshCw className={`h-4 w-4 ${isRefreshingAppointments ? 'animate-spin' : ''}`} />
+              {isRefreshingAppointments ? 'Refreshing…' : 'Refresh all'}
+            </button>
+          </div>
         </div>
         {isLoading ? <p className="p-5 text-sm text-[#5B6472]">Loading appointments…</p> : appointments.length ? (
           <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm">
