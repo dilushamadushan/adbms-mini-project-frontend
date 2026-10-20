@@ -60,15 +60,6 @@ export const patientService = {
     return response.data;
   },
 
-<<<<<<< HEAD
-  register: async (payload: RegisterPatientPayload): Promise<RegisteredPatient> => {
-    const response = await apiClient.post<RegisteredPatient>('/users/patient', payload);
-    return response.data;
-  },
-
-  getReceptionistRecords: async (search?: string): Promise<PatientProfile[]> => {
-    const response = await apiClient.get<PatientProfile[]>('/users/records', { params: { search } });
-=======
   getDoctorDepartments: async (): Promise<DoctorDepartmentItem[]> => {
     const response = await apiClient.get<DoctorDepartmentItem[]>('/patient/doctor-departments');
     return response.data;
@@ -87,7 +78,6 @@ export const patientService = {
 
   bookAppointment: async (data: BookAppointmentData): Promise<BookAppointmentResult> => {
     const response = await apiClient.post<BookAppointmentResult>('/patient/book-appointment', data);
->>>>>>> 1c1436bb3ef2e98a6c7df405434db4da31c1b5bd
     return response.data;
   },
   
