@@ -84,4 +84,28 @@ export const authService = {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(LOCAL_STORAGE_KEYS.TOKEN);
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  verifyOtp: async (email: string, otp: string): Promise<{ valid: boolean; message: string }> => {
+    const response = await apiClient.post<{ valid: boolean; message: string }>('/auth/verify-otp', { email, otp });
+    return response.data;
+  },
+
+  resetPassword: async (payload: {
+    email: string;
+    otp: string;
+    new_password: string;
+    confirm_password?: string;
+  }): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>('/auth/reset-password', payload);
+    return response.data;
+  },
 };
+
+export const requestOtp = authService.forgotPassword;
+export const verifyOtp = authService.verifyOtp;
+export const resetPassword = authService.resetPassword;

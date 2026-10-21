@@ -7,7 +7,7 @@ import {
   ClipboardList, TestTube, BarChart3,
   LogOut, Menu, X, Plus, User, Search, Bell,
   CalendarPlus, Pill, UserCircle, FileText, UserPlus, FileSearch, Grid, BookUser, Activity,
-  History
+  History, ReceiptText
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/layout/NotificationBell';
@@ -52,12 +52,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/nurse/patients", label: "My Ward's Patients", icon: Users },
     { href: "/nurse/handover", label: "Shift Handover", icon: History },
     { href: "/nurse/inventory", label: "Ward Consumables", icon: Pill },
+    { href: "/nurse/admissions", label: "Assign Admission Beds", icon: ClipboardList },
   ];
 
   const receptionistNavItems = [
-    { href: "/receptionist/dashboard", label: "Today's Schedule", icon: LayoutDashboard },
-    { href: "/receptionist/book", label: "Book / Register", icon: CalendarPlus },
+    { href: "/receptionist/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/receptionist/book", label: "Patient Registration", icon: UserPlus },
+    { href: "/receptionist/patients", label: "Patient Records", icon: FileSearch },
+    { href: "/receptionist/appointments", label: "Manage Appointments", icon: Calendar },
     { href: "/receptionist/admit", label: "Admit Patient", icon: UserPlus },
+    { href: "/receptionist/admissions", label: "Discharge", icon: ReceiptText },
   ];
 
   const adminNavItems = [
@@ -148,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {pathname.split('/').pop()?.replace('-', ' ') || 'Dashboard'}
           </h2>
           <div className="flex items-center gap-4">
-            {role !== "PATIENT" && (
+            {role !== "PATIENT" && role !== "DOCTOR" && !pathname.startsWith("/doctor") && (
               <div className="relative hidden md:block">
                 <Search className="w-4 h-4 text-[#5B6472] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input type="text" placeholder="Search MRN or name..." className="pl-9 pr-4 py-1.5 border border-[#DCE3E0] rounded-full text-sm w-64 focus:outline-none focus:border-[#0E4749]" />
@@ -156,6 +160,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             <NotificationBell />
           </div>
+
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">

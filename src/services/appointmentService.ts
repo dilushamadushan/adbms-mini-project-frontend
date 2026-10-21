@@ -21,6 +21,7 @@ export interface AppointmentCreatePayload {
   dept_id: number;
   apt_date: string;
   time_slot: string;
+  patient_id?: number;
 }
 
 export const appointmentService = {
