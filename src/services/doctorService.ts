@@ -1,6 +1,6 @@
 import apiClient from '@/lib/apiClient';
 import { calcAge, formatTime } from '@/lib/dateUtils';
-import type { ApiAppointment, AppointmentStatus, DoctorAppointment } from '@/types/doctor';
+import type { ApiAppointment, AppointmentStatus, DoctorAppointment, DoctorUserAppointment } from '@/types/doctor';
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'COMPLETED',
@@ -64,4 +64,9 @@ export const doctorService = {
         const res = await apiClient.get<ApiAppointment[]>(`/doctor/appointment-history/${doctorId}`);
         return (res.data || []).map(mapAppointment);
     },
-};
+
+    getAppointmentsByUser: async (userId: number): Promise<DoctorUserAppointment[]> => {
+        const res = await apiClient.get<DoctorUserAppointment[]>(`/doctor/appointments-by-user/${userId}`);
+        return res.data || [];
+    },
+};

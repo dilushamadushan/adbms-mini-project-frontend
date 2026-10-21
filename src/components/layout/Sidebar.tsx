@@ -131,7 +131,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {pathname.split('/').pop()?.replace('-', ' ') || 'Dashboard'}
           </h2>
           <div className="flex items-center gap-4">
-            {role !== "PATIENT" && (
+            {role !== "PATIENT" && role !== "DOCTOR" && !pathname.startsWith("/doctor") && (
               <div className="relative hidden md:block">
                 <Search className="w-4 h-4 text-[#5B6472] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input type="text" placeholder="Search MRN or name..." className="pl-9 pr-4 py-1.5 border border-[#DCE3E0] rounded-full text-sm w-64 focus:outline-none focus:border-[#0E4749]" />
@@ -139,6 +139,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
             <NotificationBell />
           </div>
+
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">

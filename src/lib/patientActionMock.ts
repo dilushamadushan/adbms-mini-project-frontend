@@ -50,7 +50,6 @@ export const MOCK_INITIAL_MEDICATIONS: Medication[] = [
 export const MOCK_PATIENT_ACTION_DATA: PatientActionData = {
   patient: {
     id: '10284',
-    mrn: 'MC-10284',
     name: 'Jane Doe',
     gender: 'Female',
     age: 31,
@@ -58,10 +57,6 @@ export const MOCK_PATIENT_ACTION_DATA: PatientActionData = {
     phone: '+94 77 123 4567',
     bloodGroup: 'O+',
     allergies: 'Penicillin',
-    emergencyContact: {
-      name: 'N. Perera',
-      phone: '+94 71 222 3344',
-    },
   },
   appointment: {
     id: 'apt-10284',
@@ -69,8 +64,12 @@ export const MOCK_PATIENT_ACTION_DATA: PatientActionData = {
     formattedDate: 'Tue, 26 Oct 2026',
     time: '09:00 AM',
     reason: 'Fever and sore throat',
+    doctorId: 0,
+    doctorName: 'Care provider',
     status: 'SCHEDULED',
   },
+  isAdmitted: false,
+  admission: null,
   history: MOCK_HISTORY,
   initialNotes: '',
   initialMedications: MOCK_INITIAL_MEDICATIONS,

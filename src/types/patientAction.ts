@@ -1,13 +1,7 @@
 import type { AppointmentStatus } from '@/types/doctor';
 
-export interface PatientEmergencyContact {
-  name: string;
-  phone: string;
-}
-
 export interface PatientDetails {
   id: string;
-  mrn: string;
   name: string;
   gender: 'Female' | 'Male' | 'Other';
   age: number;
@@ -15,7 +9,6 @@ export interface PatientDetails {
   phone: string;
   bloodGroup: string;
   allergies: string;
-  emergencyContact: PatientEmergencyContact;
 }
 
 export interface AppointmentDetails {
@@ -24,7 +17,39 @@ export interface AppointmentDetails {
   formattedDate: string;
   time: string;
   reason: string;
+  doctorId: number;
+  doctorName: string;
   status: AppointmentStatus;
+}
+
+export interface AdmissionRequestData {
+  patient_id: number;
+  gender: string;
+  ward_id: number;
+  reason: string;
+  doctor_id: number;
+  user_id: number;
+}
+
+export interface WardOption {
+  ward_id: number;
+  ward_name: string;
+}
+
+export interface AdmissionDetails {
+  admission_id: number;
+  patient_id: number;
+  ward_id: number | null;
+  bed_id: number | null;
+  admitted_doctor_id: number | null;
+  admitted_by: number | null;
+  admitted_at: string | null;
+  admission_reason: string | null;
+  guardian_name: string | null;
+  guardian_relationship: string | null;
+  guardian_contact: string | null;
+  gender: string | null;
+  status: string | null;
 }
 
 export interface PatientHistoryEntry {
@@ -60,6 +85,8 @@ export interface ClinicalNote {
 export interface PatientActionData {
   patient: PatientDetails;
   appointment: AppointmentDetails;
+  isAdmitted: boolean;
+  admission: AdmissionDetails | null;
   history: PatientHistoryEntry[];
   initialNotes?: string;
   initialMedications?: Medication[];
@@ -94,4 +121,3 @@ export interface DischargeDisagreeData {
   followUpPlan: string;
   returnWarningSigns: string;
 }
-
