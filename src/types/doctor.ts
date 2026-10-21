@@ -24,6 +24,7 @@ export interface DoctorAppointment {
     patientId: string;
     patientName: string;
     age: number | string;
+    gender?: string;
     bloodGroup: string;
     allergies: string;
     reason: string;      // department name
