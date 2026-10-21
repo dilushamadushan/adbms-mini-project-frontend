@@ -10,8 +10,8 @@ type AdmissionViewTab = 'admit' | 'discharge' | 'details';
 
 interface AdmissionReferralPanelProps {
   initialTab?: AdmissionViewTab;
-  onAdmissionSubmit?: (data: unknown) => void;
-  onDischargeSubmit?: (data: unknown) => void;
+  onAdmissionSubmit?: (data: any) => void | Promise<void>;
+  onDischargeSubmit?: (data: any) => void | Promise<void>;
   onSwitchToPrescription?: () => void;
   isSubmitting?: boolean;
 }
