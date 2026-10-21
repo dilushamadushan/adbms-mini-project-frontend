@@ -13,3 +13,24 @@ html, body {
   color: #1a1a1a;
   height: 100%;
 }
+
+@media print {
+  body {
+    background-color: white !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #printable-order-document, #printable-order-document * {
+    visibility: visible;
+  }
+  #printable-order-document {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
