@@ -13,6 +13,7 @@ export const ROLES = {
   NURSE: 'NURSE',
   RECEPTIONIST: 'RECEPTIONIST',
   PATIENT: 'PATIENT',
+  PHARMACIST: 'PHARMACIST',
 } as const satisfies Record<Role, Role>;
 
 export const ROUTES: Record<Role, string> = {
@@ -21,6 +22,7 @@ export const ROUTES: Record<Role, string> = {
   NURSE: '/nurse/dashboard',
   RECEPTIONIST: '/receptionist/dashboard',
   PATIENT: '/patient/dashboard',
+  PHARMACIST: '/pharmacist/dashboard',
 };
 
 export const LOCAL_STORAGE_KEYS = {

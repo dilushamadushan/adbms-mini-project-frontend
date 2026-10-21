@@ -1,6 +1,7 @@
 export * from './api';
+export * from './pharmacy';
 
-export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT';
+export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT' | 'PHARMACIST';
 
 export interface AuthUser {
   user_id: number | string;
