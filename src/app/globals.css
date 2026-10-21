@@ -21,10 +21,12 @@ html, body {
   body * {
     visibility: hidden;
   }
-  #printable-order-document, #printable-order-document * {
+  #printable-order-document, #printable-order-document *,
+  #printable-dispensing-report, #printable-dispensing-report * {
     visibility: visible;
   }
-  #printable-order-document {
+  #printable-order-document,
+  #printable-dispensing-report {
     position: absolute;
     left: 0;
     top: 0;

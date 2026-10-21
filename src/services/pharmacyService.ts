@@ -165,6 +165,21 @@ export const pharmacyService = {
     if (batchExpiry) params.append('batch_expiry', batchExpiry);
     const res = await apiClient.post<PurchaseOrder>(`/pharmacy/orders/${orderId}/restock?${params.toString()}`);
     return res.data;
+  },
+
+  getPendingPrescriptions: async (): Promise<PrescriptionQueueItem[]> => {
+    const res = await apiClient.get<PrescriptionQueueItem[]>('/pharmacy/prescriptions/pending');
+    return res.data || [];
+  },
+
+  dispensePrescription: async (rxId: number, payload: DispenseRequestPayload): Promise<DispenseResponseResult> => {
+    const res = await apiClient.post<DispenseResponseResult>(`/pharmacy/prescriptions/${rxId}/dispense`, payload);
+    return res.data;
+  },
+
+  getDispensationsHistory: async (limit: number = 50): Promise<DispensationHistoryRecord[]> => {
+    const res = await apiClient.get<DispensationHistoryRecord[]>(`/pharmacy/prescriptions/history?limit=${limit}`);
+    return res.data || [];
   }
 };
 
@@ -205,5 +220,57 @@ export interface PurchaseOrder {
   notes?: string;
   total_items?: number;
   items?: PurchaseOrderItem[];
+}
+
+export interface PrescriptionQueueItem {
+  rx_id: number;
+  record_id: number;
+  med_name: string;
+  dosage: string;
+  duration?: string;
+  prescribed_at?: string;
+  patient_id: number;
+  patient_name: string;
+  allergies?: string | null;
+  doctor_name: string;
+  medicine_id?: number;
+  inventory_med_name?: string;
+  stock_qty?: number;
+  unit_price?: number;
+  is_dispensed: boolean;
+  dispense_id?: number | null;
+}
+
+export interface DispenseRequestPayload {
+  medicine_id: number;
+  quantity: number;
+  pharmacist_id?: number;
+  admission_id?: number;
+}
+
+export interface DispenseResponseResult {
+  success: boolean;
+  message: string;
+  dispense_id: number;
+  rx_id: number;
+  medicine_id: number;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  remaining_stock: number;
+  dispensed_at: string;
+}
+
+export interface DispensationHistoryRecord {
+  dispense_id: number;
+  rx_id: number;
+  patient_name: string;
+  doctor_name: string;
+  med_name: string;
+  quantity: number;
+  unit_price_at_sale: number;
+  total_revenue: number;
+  dispensed_at: string;
+  pharmacist_name: string;
 }
 

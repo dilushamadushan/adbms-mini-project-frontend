@@ -444,7 +444,9 @@ export default function PharmacistInventory() {
                       <td className="py-3 px-4">
                         <div className="text-gray-700">{med.expiry_date ? med.expiry_date.slice(0, 10) : '—'}</div>
                         <div className="text-xs">
-                          {days < 0 ? (
+                          {med.stock_qty <= 0 ? (
+                            <span className="text-gray-400 italic">No physical units</span>
+                          ) : days < 0 ? (
                             <span className="text-red-600 font-semibold">Expired {Math.abs(days)}d ago</span>
                           ) : days <= 30 ? (
                             <span className="text-orange-600 font-medium">{days} days remaining</span>

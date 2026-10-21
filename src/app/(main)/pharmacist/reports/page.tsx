@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   BarChart3, AlertTriangle, AlertCircle, TrendingUp, Calendar,
-  DollarSign, Package, RefreshCw, Loader2, ArrowUpRight, CheckCircle2
+  Coins, Package, RefreshCw, Loader2, ArrowUpRight, CheckCircle2,
+  Printer, FileText
 } from 'lucide-react';
 import {
   pharmacyService, LowStockAlert, ExpiringMedicine,
   TopDispensedMedicine, DailyDispensingReport, PharmacyDashboardKpis
 } from '@/services/pharmacyService';
+import DailyDispensingReportModal from '@/components/features/pharmacist/DailyDispensingReportModal';
 
 export default function PharmacistReports() {
   const [activeTab, setActiveTab] = useState<'alerts' | 'top_dispensed' | 'daily_report' | 'valuation'>('alerts');
@@ -26,16 +28,35 @@ export default function PharmacistReports() {
   // Date filters for daily report
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Date range validation rules
+  const dateValidationError = (() => {
+    if (!startDate && !endDate) return null; // Initial state: neither date entered
+    if (startDate && !endDate) return "End Date is missing. Please select an End Date to complete the report period.";
+    if (!startDate && endDate) return "Start Date is missing. Please select a Start Date to complete the report period.";
+    if (startDate > endDate) return "Invalid Date Range: Start Date cannot be later than End Date. Please fix the dates.";
+    if (startDate > todayStr || endDate > todayStr) return "Invalid Date: Future dates cannot be selected. Please choose dates up to today.";
+    return null;
+  })();
+
+  const isDateRangeValid = Boolean(startDate && endDate && !dateValidationError);
 
   const loadReportData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const dailyPromise = (startDate && endDate && !dateValidationError)
+        ? pharmacyService.getDailyDispensing(startDate, endDate).catch(() => [])
+        : Promise.resolve([]);
+
       const [lowStockData, expiringData, topData, dailyData, kpiData] = await Promise.all([
         pharmacyService.getLowStockAlerts().catch(() => []),
         pharmacyService.getExpiringMedicines(45).catch(() => []),
         pharmacyService.getTopDispensed(10).catch(() => []),
-        pharmacyService.getDailyDispensing(startDate || undefined, endDate || undefined).catch(() => []),
+        dailyPromise,
         pharmacyService.getDashboardKpis().catch(() => null)
       ]);
 
@@ -49,7 +70,7 @@ export default function PharmacistReports() {
     } finally {
       setIsLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, dateValidationError]);
 
   useEffect(() => {
     loadReportData();
@@ -92,7 +113,7 @@ export default function PharmacistReports() {
           <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm">
             <div className="flex items-center justify-between text-xs text-[#5B6472] mb-1">
               <span>Inventory Valuation</span>
-              <DollarSign className="w-4 h-4 text-[#0E4749]" />
+              <Coins className="w-4 h-4 text-[#0E4749]" />
             </div>
             <div className="text-xl font-bold text-[#0E4749]">
               Rs. {Number(kpis.total_inventory_valuation || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -326,77 +347,149 @@ export default function PharmacistReports() {
               <label className="text-xs font-semibold text-gray-600">Start Date:</label>
               <input
                 type="date"
+                max={todayStr}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
+                className={`px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20 ${
+                  dateValidationError && !startDate ? 'border-amber-400 bg-amber-50/30' : 'border-gray-300'
+                }`}
               />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-gray-600">End Date:</label>
               <input
                 type="date"
+                max={todayStr}
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
+                className={`px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20 ${
+                  dateValidationError && !endDate ? 'border-amber-400 bg-amber-50/30' : 'border-gray-300'
+                }`}
               />
             </div>
-            <button
-              onClick={() => { setStartDate(''); setEndDate(''); }}
-              className="text-xs text-[#0E4749] underline hover:text-black ml-auto"
-            >
-              Reset Filters
-            </button>
-          </div>
-
-          {/* Period Highlights */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-teal-50 border border-teal-100 p-4 rounded-xl">
-              <div className="text-xs font-medium text-teal-800">Total Revenue in Period</div>
-              <div className="text-2xl font-bold text-[#0E4749] mt-1">
-                Rs. {totalReportRevenue.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-              <div className="text-xs font-medium text-blue-800">Total Units Dispensed</div>
-              <div className="text-2xl font-bold text-blue-900 mt-1">
-                {totalReportUnits} units
-              </div>
+            <div className="ml-auto flex items-center gap-3">
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  className="text-xs text-[#0E4749] underline hover:text-black cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
+              <button
+                onClick={() => setShowReportModal(true)}
+                disabled={!isDateRangeValid || dailyReport.length === 0}
+                title={!isDateRangeValid ? "Select valid start and end dates to enable export" : "Download / Print PDF Report"}
+                className="flex items-center gap-2 px-4 py-2 bg-[#0E4749] hover:bg-[#082d2f] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Download / Print PDF Report</span>
+              </button>
             </div>
           </div>
 
-          {/* Daily Table */}
-          <div className="bg-white rounded-xl border border-[#DCE3E0] shadow-sm overflow-hidden">
-            {dailyReport.length === 0 ? (
-              <div className="py-8 text-center text-sm text-[#5B6472]">No dispensing records in selected date range.</div>
-            ) : (
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#F8F9FA] text-xs text-[#5B6472] uppercase border-b border-[#DCE3E0]">
-                  <tr>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Prescriptions Dispensed</th>
-                    <th className="py-3 px-4">Total Units Dispensed</th>
-                    <th className="py-3 px-4 text-right">Daily Revenue</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DCE3E0]">
-                  {dailyReport.map((day) => (
-                    <tr key={String(day.report_date)} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 font-semibold text-gray-800">
-                        {String(day.report_date).slice(0, 10)}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{day.total_dispensations} prescriptions</td>
-                      <td className="py-3 px-4 font-bold text-teal-700">{day.total_units} units</td>
-                      <td className="py-3 px-4 text-right font-bold text-[#0E4749]">
-                        Rs. {Number(day.total_revenue).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          {/* Validation Error Alert Banner */}
+          {dateValidationError && (
+            <div className="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-xl text-amber-900 text-xs flex items-center justify-between gap-3 shadow-sm animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-bold block text-sm text-amber-950">Date Range Validation Notice</span>
+                  <span className="text-amber-800 text-xs">{dateValidationError}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg border border-amber-300 transition shrink-0 cursor-pointer"
+              >
+                Clear Dates
+              </button>
+            </div>
+          )}
+
+          {/* Empty Prompt State: Shown when no dates are selected yet */}
+          {!startDate && !endDate && !dateValidationError && (
+            <div className="bg-white rounded-xl border border-dashed border-[#DCE3E0] p-12 text-center flex flex-col items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-teal-50 text-[#0E4749] flex items-center justify-center mb-4">
+                <Calendar className="w-7 h-7" />
+              </div>
+              <h3 className="font-bold text-[#0E4749] text-base mb-1.5">Select Date Range to View Dispensing Report</h3>
+              <p className="text-xs text-[#5B6472] max-w-md leading-relaxed">
+                Daily dispensing records, medication unit counts, and revenue totals will only be displayed after selecting both a <strong>Start Date</strong> and an <strong>End Date</strong> above.
+              </p>
+            </div>
+          )}
+
+          {/* Report Results: Shown ONLY when both dates are provided and valid */}
+          {isDateRangeValid && (
+            <>
+              {/* Period Highlights */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-teal-50 border border-teal-100 p-4 rounded-xl">
+                  <div className="text-xs font-medium text-teal-800">
+                    Total Revenue in Period ({startDate} to {endDate})
+                  </div>
+                  <div className="text-2xl font-bold text-[#0E4749] mt-1">
+                    Rs. {totalReportRevenue.toFixed(2)}
+                  </div>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
+                  <div className="text-xs font-medium text-blue-800">Total Units Dispensed</div>
+                  <div className="text-2xl font-bold text-blue-900 mt-1">
+                    {totalReportUnits} units
+                  </div>
+                </div>
+              </div>
+
+              {/* Daily Table */}
+              <div className="bg-white rounded-xl border border-[#DCE3E0] shadow-sm overflow-hidden">
+                {dailyReport.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-[#5B6472]">
+                    <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2 opacity-50" />
+                    No dispensing records found for the period from <strong>{startDate}</strong> to <strong>{endDate}</strong>.
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-[#F8F9FA] text-xs text-[#5B6472] uppercase border-b border-[#DCE3E0]">
+                      <tr>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Prescriptions Dispensed</th>
+                        <th className="py-3 px-4">Total Units Dispensed</th>
+                        <th className="py-3 px-4 text-right">Daily Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DCE3E0]">
+                      {dailyReport.map((day) => (
+                        <tr key={String(day.report_date)} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 font-semibold text-gray-800">
+                            {String(day.report_date).slice(0, 10)}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">{day.total_dispensations} prescriptions</td>
+                          <td className="py-3 px-4 font-bold text-teal-700">{day.total_units} units</td>
+                          <td className="py-3 px-4 text-right font-bold text-[#0E4749]">
+                            Rs. {Number(day.total_revenue).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
+      {/* Daily Dispensing Report PDF Export & Print Modal */}
+      <DailyDispensingReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        dailyReport={dailyReport}
+        startDate={startDate}
+        endDate={endDate}
+        totalRevenue={totalReportRevenue}
+        totalUnits={totalReportUnits}
+        pharmacistName="Alex Taylor, B.Pharm"
+      />
     </div>
   );
 }
