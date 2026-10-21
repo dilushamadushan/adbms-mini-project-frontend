@@ -1,6 +1,7 @@
 export * from './api';
+export * from './pharmacy';
 
-export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT';
+export type Role = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT' | 'PHARMACIST';
 
 export interface AuthUser {
   user_id: number | string;
@@ -36,6 +37,35 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
   refreshProfile: () => Promise<AuthUser | null>;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  valid: boolean;
+  message: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  new_password: string;
+  confirm_password?: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
 }
 
 export interface StaffMember {
