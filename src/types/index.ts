@@ -39,6 +39,35 @@ export interface AuthContextType {
   refreshProfile: () => Promise<AuthUser | null>;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export interface VerifyOtpRequest {
+  email: string;
+  otp: string;
+}
+
+export interface VerifyOtpResponse {
+  valid: boolean;
+  message: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  new_password: string;
+  confirm_password?: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
 export interface StaffMember {
   user_id: number;
   staff_id: number;
