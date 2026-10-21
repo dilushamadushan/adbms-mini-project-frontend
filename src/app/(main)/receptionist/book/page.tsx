@@ -1,158 +1,126 @@
 "use client";
-import React, { useState } from 'react';
-import { Loader2, CheckCircle, UserPlus, FileText } from 'lucide-react';
 
-export default function ReceptionistBook() {
+import { useState, type FormEvent } from 'react';
+import { CheckCircle, Loader2, UserPlus } from 'lucide-react';
+import { receptionistService, type RecepPatientRecord } from '@/services/receptionistService';
+
+export default function ReceptionistPatientRegistration() {
   const [isLoading, setIsLoading] = useState(false);
-  const [successData, setSuccessData] = useState<{id: string, pass: string} | null>(null);
+  const [registeredPatient, setRegisteredPatient] = useState<RecepPatientRecord | null>(null);
+  const [error, setError] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dob, setDob] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('Unknown');
+  const [email, setEmail] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+  const [allergies, setAllergies] = useState('');
 
-  
-  const [name, setName] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("");
-  const [blood, setBlood] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [emContact, setEmContact] = useState("");
-  const [allergies, setAllergies] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setIsLoading(true);
+    setError('');
+    try {
+      const created = await receptionistService.registerPatient({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        dob,
+        blood_group: bloodGroup,
+        emergency_contact: emergencyContact.trim(),
+        allergies: allergies.trim() || 'Unknown',
+      });
+      setRegisteredPatient(created);
+    } catch {
+      setError('Patient registration failed. Check that the email is not already registered and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-    
-    
-    await new Promise(r => setTimeout(r, 1500)); 
-
-    setIsLoading(false);
-    
-    
-    const tempPass = Math.random().toString(36).slice(-8);
-    const newId = 'PT-' + Math.floor(Math.random() * 100000);
-    
-    setSuccessData({ id: newId, pass: tempPass });
-  };
-
-  const resetForm = () => {
-    setName(""); setDob(""); setGender(""); setBlood("");
-    setPhone(""); setEmail(""); setEmContact(""); setAllergies("");
-    setSuccessData(null);
-  };
+  function resetForm() {
+    setFirstName('');
+    setLastName('');
+    setDob('');
+    setBloodGroup('Unknown');
+    setEmail('');
+    setEmergencyContact('');
+    setAllergies('');
+    setRegisteredPatient(null);
+    setError('');
+  }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <h3 className="font-bold text-[#0E4749] text-xl">Patient Registration</h3>
-      
-      <div className="bg-white rounded-xl border border-[#DCE3E0] shadow-sm overflow-hidden">
-        <div className="bg-[#0E4749] text-white p-4 font-bold flex items-center gap-2">
-          <UserPlus className="w-5 h-5"/> New Patient Intake Form
+    <div className="max-w-4xl space-y-6">
+      <h3 className="text-xl font-bold text-[#0E4749]">Patient Registration</h3>
+      <section className="overflow-hidden rounded-xl border border-[#DCE3E0] bg-white shadow-sm">
+        <div className="flex items-center gap-2 bg-[#0E4749] p-4 font-bold text-white">
+          <UserPlus className="h-5 w-5" /> New Patient Intake Form
         </div>
-        
-        {successData ? (
-           <div className="p-12 text-center flex flex-col items-center">
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle className="w-10 h-10 text-emerald-600" />
+
+        {registeredPatient ? (
+          <div className="flex flex-col items-center p-8 text-center md:p-12">
+            <span className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle className="h-9 w-9 text-emerald-600" />
+            </span>
+            <h4 className="text-2xl font-bold text-gray-900">Patient registered</h4>
+            <p className="mt-2 text-sm text-[#5B6472]">The patient record has been saved to the database.</p>
+            <div className="mt-6 w-full max-w-md rounded-xl border border-[#DCE3E0] bg-gray-50 p-5 text-left">
+              <p className="py-2 text-sm"><span className="font-semibold">Patient:</span> {registeredPatient.first_name} {registeredPatient.last_name}</p>
+              <p className="border-t border-gray-200 py-2 text-sm"><span className="font-semibold">Portal username:</span> {registeredPatient.username}</p>
+              {registeredPatient.raw_password && <p className="border-t border-gray-200 py-2 text-sm"><span className="font-semibold">Temporary password:</span> <span className="font-mono">{registeredPatient.raw_password}</span></p>}
             </div>
-            <h4 className="text-2xl font-bold text-gray-900 mb-2">Patient Registered Successfully</h4>
-            <p className="text-[#5B6472] mb-8">Please provide these temporary login credentials to the patient.</p>
-            
-            <div className="bg-gray-50 border border-[#DCE3E0] rounded-xl p-6 w-full max-w-md text-left mb-8 shadow-inner">
-              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                <span className="text-[#5B6472] font-medium">Patient ID:</span> 
-                <span className="font-mono text-lg font-bold text-[#0E4749]">{successData.id}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-[#5B6472] font-medium">Portal Password:</span> 
-                <span className="font-mono text-lg font-bold text-[#E07856]">{successData.pass}</span>
-              </div>
-            </div>
-            
-            <button onClick={resetForm} className="bg-[#0E4749] hover:bg-[#0a3335] text-white px-8 py-3 rounded-xl font-bold transition-colors">
-              Register Another Patient
+            <button type="button" onClick={resetForm} className="mt-6 rounded-lg bg-[#0E4749] px-6 py-3 font-bold text-white hover:bg-[#0a3335]">
+              Register another patient
             </button>
           </div>
         ) : (
-          <form className="p-8" onSubmit={handleSubmit}>
-            <div className="grid md:grid-cols-2 gap-x-8 gap-y-6">
-              
-              
-              <div className="space-y-6">
-                <h4 className="text-sm font-bold text-[#5B6472] uppercase tracking-wider border-b border-[#DCE3E0] pb-2 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4"/> Basic Info
-                </h4>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name <span className="text-[#E07856]">*</span></label>
-                  <input type="text" required value={name} onChange={e => setName(e.target.value)} className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749]" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Date of Birth <span className="text-[#E07856]">*</span></label>
-                    <input type="date" required value={dob} onChange={e => setDob(e.target.value)} className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749] bg-white" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Gender <span className="text-[#E07856]">*</span></label>
-                    <select required value={gender} onChange={e => setGender(e.target.value)} className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749] bg-white">
-                      <option value="">Select...</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              
-              <div className="space-y-6">
-                <h4 className="text-sm font-bold text-[#5B6472] uppercase tracking-wider border-b border-[#DCE3E0] pb-2 flex items-center gap-2">
-                  <FileText className="w-4 h-4"/> Contact & Medical
-                </h4>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Email Address <span className="text-[#E07856]">*</span></label>
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Will be used for portal login" className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749]" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone Number <span className="text-[#E07856]">*</span></label>
-                    <input type="tel" required pattern="[0-9\-+() ]+" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 000-0000" className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749]" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Blood Group</label>
-                    <select value={blood} onChange={e => setBlood(e.target.value)} className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749] bg-white">
-                      <option value="">Unknown</option>
-                      <option value="A+">A+</option><option value="A-">A-</option>
-                      <option value="B+">B+</option><option value="B-">B-</option>
-                      <option value="O+">O+</option><option value="O-">O-</option>
-                      <option value="AB+">AB+</option><option value="AB-">AB-</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-1 md:col-span-2 grid md:grid-cols-2 gap-x-8 gap-y-6 pt-2">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Emergency Contact <span className="text-[#E07856]">*</span></label>
-                  <input type="text" required value={emContact} onChange={e => setEmContact(e.target.value)} placeholder="Name & Phone Number" className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749]" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Known Allergies</label>
-                  <input type="text" value={allergies} onChange={e => setAllergies(e.target.value)} placeholder="Comma separated list..." className="w-full p-3 border border-[#DCE3E0] rounded-lg focus:outline-none focus:border-[#0E4749]" />
-                </div>
-              </div>
-
+          <form className="space-y-6 p-6 md:p-8" onSubmit={handleSubmit}>
+            <div className="grid gap-5 md:grid-cols-2">
+              <label className="block text-sm font-semibold text-gray-800">
+                First name
+                <input required maxLength={100} value={firstName} onChange={(event) => setFirstName(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                Last name
+                <input required maxLength={100} value={lastName} onChange={(event) => setLastName(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                Date of birth
+                <input required type="date" max={new Date().toISOString().slice(0, 10)} value={dob} onChange={(event) => setDob(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                Blood group
+                <select value={bloodGroup} onChange={(event) => setBloodGroup(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none">
+                  <option>Unknown</option>
+                  {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((group) => <option key={group}>{group}</option>)}
+                </select>
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                Emergency contact
+                <input required maxLength={20} value={emergencyContact} onChange={(event) => setEmergencyContact(event.target.value)} placeholder="Phone number" className="mt-2 w-full rounded-lg border border-[#DCE3E0] p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                Email for patient portal
+                <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-lg border border-[#DCE3E0] p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800 md:col-span-2">
+                Allergies
+                <textarea rows={3} maxLength={2000} value={allergies} onChange={(event) => setAllergies(event.target.value)} placeholder="List allergies, or enter None or Unknown." className="mt-2 w-full rounded-lg border border-[#DCE3E0] p-3 font-normal focus:border-[#0E4749] focus:outline-none" />
+                <span className="mt-1 block text-xs font-normal text-[#5B6472]">Enter “None” or “Unknown” if there are no confirmed allergy details.</span>
+              </label>
             </div>
-
-            <div className="pt-8 mt-8 border-t border-[#DCE3E0] flex justify-end gap-4">
-              <button type="button" onClick={resetForm} disabled={isLoading} className="px-6 py-3 font-bold text-[#5B6472] hover:bg-gray-100 rounded-xl transition-colors">
-                Clear Form
-              </button>
-              <button type="submit" disabled={isLoading} className="bg-[#E07856] hover:bg-[#c96749] text-white px-8 py-3 rounded-xl font-bold shadow-md transition-colors flex items-center gap-2 disabled:opacity-50">
-                {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                {isLoading ? 'Registering...' : 'Register Patient'}
+            {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+            <div className="flex justify-end gap-3 border-t border-[#DCE3E0] pt-5">
+              <button type="button" onClick={resetForm} disabled={isLoading} className="rounded-lg px-5 py-3 font-semibold text-[#5B6472] hover:bg-gray-100 disabled:opacity-50">Clear form</button>
+              <button type="submit" disabled={isLoading} className="flex items-center gap-2 rounded-lg bg-[#E07856] px-6 py-3 font-bold text-white hover:bg-[#c96749] disabled:opacity-50">
+                {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                {isLoading ? 'Registering…' : 'Register patient'}
               </button>
             </div>
           </form>
         )}
-      </div>
+      </section>
     </div>
   );
 }
