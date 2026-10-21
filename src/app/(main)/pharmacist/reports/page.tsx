@@ -156,39 +156,61 @@ export default function PharmacistReports() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-[#DCE3E0] gap-6 text-sm font-medium">
+      {/* Navigation Buttons */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-gray-100/90 border border-[#DCE3E0] rounded-2xl w-fit shadow-xs">
+        {/* Button 1: Stock & Expiry Alerts */}
         <button
+          type="button"
           onClick={() => setActiveTab('alerts')}
-          className={`pb-3 flex items-center gap-2 transition ${
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
             activeTab === 'alerts'
-              ? 'border-b-2 border-[#0E4749] text-[#0E4749] font-bold'
-              : 'text-[#5B6472] hover:text-[#0E4749]'
+              ? 'bg-[#0E4749] text-white shadow-md shadow-[#0E4749]/20'
+              : 'bg-white text-gray-700 hover:text-[#0E4749] hover:bg-white/90 border border-gray-200/60 shadow-xs'
           }`}
         >
-          <AlertTriangle className="w-4 h-4" /> Stock & Expiry Alerts ({lowStock.length + expiring.length})
+          <div className={`p-1 rounded-lg ${activeTab === 'alerts' ? 'bg-white/15 text-amber-300' : 'bg-amber-50 text-amber-600'}`}>
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+          <span>Stock & Expiry Alerts</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold leading-none ${
+            activeTab === 'alerts'
+              ? 'bg-amber-400 text-amber-950'
+              : 'bg-amber-100 text-amber-800'
+          }`}>
+            {lowStock.length + expiring.length}
+          </span>
         </button>
 
+        {/* Button 2: Most Dispensed Drugs */}
         <button
+          type="button"
           onClick={() => setActiveTab('top_dispensed')}
-          className={`pb-3 flex items-center gap-2 transition ${
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
             activeTab === 'top_dispensed'
-              ? 'border-b-2 border-[#0E4749] text-[#0E4749] font-bold'
-              : 'text-[#5B6472] hover:text-[#0E4749]'
+              ? 'bg-[#0E4749] text-white shadow-md shadow-[#0E4749]/20'
+              : 'bg-white text-gray-700 hover:text-[#0E4749] hover:bg-white/90 border border-gray-200/60 shadow-xs'
           }`}
         >
-          <TrendingUp className="w-4 h-4" /> Most Dispensed Drugs
+          <div className={`p-1 rounded-lg ${activeTab === 'top_dispensed' ? 'bg-white/15 text-teal-200' : 'bg-teal-50 text-teal-700'}`}>
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <span>Most Dispensed Drugs</span>
         </button>
 
+        {/* Button 3: Daily Dispensing Report */}
         <button
+          type="button"
           onClick={() => setActiveTab('daily_report')}
-          className={`pb-3 flex items-center gap-2 transition ${
+          className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 cursor-pointer ${
             activeTab === 'daily_report'
-              ? 'border-b-2 border-[#0E4749] text-[#0E4749] font-bold'
-              : 'text-[#5B6472] hover:text-[#0E4749]'
+              ? 'bg-[#0E4749] text-white shadow-md shadow-[#0E4749]/20'
+              : 'bg-white text-gray-700 hover:text-[#0E4749] hover:bg-white/90 border border-gray-200/60 shadow-xs'
           }`}
         >
-          <Calendar className="w-4 h-4" /> Daily Dispensing Report
+          <div className={`p-1 rounded-lg ${activeTab === 'daily_report' ? 'bg-white/15 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
+            <Calendar className="w-4 h-4" />
+          </div>
+          <span>Daily Dispensing Report</span>
         </button>
       </div>
 

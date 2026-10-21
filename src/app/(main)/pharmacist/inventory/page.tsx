@@ -13,6 +13,20 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import PurchaseOrderModal from '@/components/features/pharmacist/PurchaseOrderModal';
 
+interface PendingOrderItem {
+  order_id: number;
+  order_number: string;
+  supplier_name: string;
+  expected_delivery_date: string;
+  item_id?: number;
+  medicine_id: number;
+  med_name: string;
+  generic_name?: string | null;
+  requested_quantity: number;
+  unit_price: number;
+  current_stock: number;
+}
+
 export default function PharmacistInventory() {
   const { user } = useAuth();
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -27,7 +41,7 @@ export default function PharmacistInventory() {
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [isReceiveStockOpen, setIsReceiveStockOpen] = useState(false);
-  const [selectedMedForStock, setSelectedMedForStock] = useState<Medicine | null>(null);
+  const [selectedOrderedItem, setSelectedOrderedItem] = useState<PendingOrderItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -111,16 +125,60 @@ export default function PharmacistInventory() {
     setIsAddEditOpen(true);
   };
 
-  // Open Receive Stock Modal
-  const handleOpenReceiveStock = (med?: Medicine) => {
-    if (med) {
-      setSelectedMedForStock(med);
-    } else if (medicines.length > 0) {
-      setSelectedMedForStock(medicines[0]);
+  // Filter for ordered medicines from active/pending purchase orders awaiting restocking
+  const pendingOrderedItems: PendingOrderItem[] = React.useMemo(() => {
+    const list: PendingOrderItem[] = [];
+    const activeOrders = ordersList.filter(o => o.status !== 'RECEIVED' && o.status !== 'CANCELLED');
+    for (const ord of activeOrders) {
+      if (ord.items && ord.items.length > 0) {
+        for (const it of ord.items) {
+          const med = medicines.find(m => m.medicine_id === it.medicine_id);
+          list.push({
+            order_id: ord.order_id,
+            order_number: ord.order_number,
+            supplier_name: ord.supplier_name,
+            expected_delivery_date: ord.expected_delivery_date,
+            item_id: it.item_id,
+            medicine_id: it.medicine_id,
+            med_name: it.med_name || med?.med_name || `Medicine #${it.medicine_id}`,
+            generic_name: it.generic_name || med?.generic_name,
+            requested_quantity: it.requested_quantity,
+            unit_price: Number(it.unit_price || med?.unit_price || 0),
+            current_stock: med ? med.stock_qty : 0
+          });
+        }
+      }
     }
-    setReceiveQty(50);
-    setReceiveExpiry(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    setIsReceiveStockOpen(true);
+    return list;
+  }, [ordersList, medicines]);
+
+  // Open Receive Stock Modal - ONLY allows restocking from placed purchase orders
+  const handleOpenReceiveStock = (med?: Medicine) => {
+    setError(null);
+    if (pendingOrderedItems.length === 0) {
+      setSelectedOrderedItem(null);
+      setIsReceiveStockOpen(true);
+      return;
+    }
+
+    if (med) {
+      const match = pendingOrderedItems.find(i => i.medicine_id === med.medicine_id);
+      if (match) {
+        setSelectedOrderedItem(match);
+        setReceiveQty(match.requested_quantity);
+        setReceiveExpiry(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        setIsReceiveStockOpen(true);
+      } else {
+        // Enforce hospital order-first rule:
+        setError(`"${med.med_name}" does not have an active purchase order. Restock can only be recorded after placing an order with a supplier.`);
+        handleOpenCreateOrder(med);
+      }
+    } else {
+      setSelectedOrderedItem(pendingOrderedItems[0]);
+      setReceiveQty(pendingOrderedItems[0].requested_quantity);
+      setReceiveExpiry(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      setIsReceiveStockOpen(true);
+    }
   };
 
   // Open Create Restock Order Modal
@@ -178,22 +236,52 @@ export default function PharmacistInventory() {
   // Submit Receive Stock
   const handleSubmitReceiveStock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedMedForStock) return;
+    if (!selectedOrderedItem) return;
     setIsSubmitting(true);
     setError(null);
     try {
       const staffId = (user as any)?.staff_id || 5;
       await pharmacyService.receiveStock({
-        medicine_id: selectedMedForStock.medicine_id,
+        medicine_id: selectedOrderedItem.medicine_id,
         quantity: Number(receiveQty),
         expiry_date: receiveExpiry,
         received_by: staffId
       });
-      setActionSuccess(`Received ${receiveQty} units of ${selectedMedForStock.med_name}! Stock updated automatically.`);
+
+      // If the parent order only had 1 item, mark the order as RECEIVED
+      const parentOrder = ordersList.find(o => o.order_id === selectedOrderedItem.order_id);
+      if (parentOrder && (!parentOrder.items || parentOrder.items.length <= 1)) {
+        await pharmacyService.updateOrderStatus(selectedOrderedItem.order_id, 'RECEIVED').catch(() => {});
+      }
+
+      setActionSuccess(
+        `Successfully received and restocked ${receiveQty} units of ${selectedOrderedItem.med_name} from Order #${selectedOrderedItem.order_number}!`
+      );
       setIsReceiveStockOpen(false);
-      loadData();
+      await loadData();
+      await loadOrders();
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to record stock receipt.');
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setActionSuccess(null), 4000);
+    }
+  };
+
+  // Restock entire order at once if needed
+  const handleRestockEntireOrder = async (orderId: number) => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const staffId = (user as any)?.staff_id || 5;
+      await pharmacyService.restockDeliveredOrder(orderId, staffId, receiveExpiry);
+      const ord = ordersList.find(o => o.order_id === orderId);
+      setActionSuccess(`All items in Order #${ord?.order_number || orderId} successfully received and restocked into inventory!`);
+      setIsReceiveStockOpen(false);
+      await loadData();
+      await loadOrders();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to restock order.');
     } finally {
       setIsSubmitting(false);
       setTimeout(() => setActionSuccess(null), 4000);
@@ -253,7 +341,6 @@ export default function PharmacistInventory() {
   // Quick stats
   const totalCount = medicines.length;
   const lowStockCount = medicines.filter(m => (m.stock_status === 'LOW_STOCK' || m.stock_qty <= m.reorder_level)).length;
-  const expiredCount = medicines.filter(m => m.stock_status === 'EXPIRED').length;
   const expiringSoonCount = medicines.filter(m => m.stock_status === 'EXPIRING_SOON').length;
 
   return (
@@ -289,13 +376,11 @@ export default function PharmacistInventory() {
             className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium shadow-sm transition"
           >
             <ArrowDownToLine className="w-4 h-4" /> Receive Stock
-          </button>
-
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-3.5 py-2 bg-[#0E4749] hover:bg-[#093537] text-white rounded-lg text-sm font-medium shadow-sm transition"
-          >
-            <Plus className="w-4 h-4" /> Add Drug
+            {pendingOrderedItems.length > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.5 bg-white text-emerald-800 text-[10px] font-bold rounded-full leading-none">
+                {pendingOrderedItems.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -315,7 +400,7 @@ export default function PharmacistInventory() {
       )}
 
       {/* Overview Stat Badges */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-[#0E4749]">
             <Layers className="w-5 h-5" />
@@ -343,16 +428,6 @@ export default function PharmacistInventory() {
           <div>
             <div className="text-2xl font-bold text-orange-600">{expiringSoonCount}</div>
             <div className="text-xs text-[#5B6472]">Expiring in 30d</div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
-            <AlertCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">{expiredCount}</div>
-            <div className="text-xs text-[#5B6472]">Expired Batches</div>
           </div>
         </div>
       </div>
@@ -390,6 +465,13 @@ export default function PharmacistInventory() {
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-2 px-3.5 py-2 bg-[#0E4749] hover:bg-[#093537] text-white rounded-lg text-sm font-semibold shadow-sm transition ml-auto sm:ml-1"
+          >
+            <Plus className="w-4 h-4" /> Add Drug
           </button>
         </div>
       </div>
@@ -846,88 +928,183 @@ export default function PharmacistInventory() {
         </div>
       )}
 
-      {/* Modal: Direct Receive Stock */}
-      {isReceiveStockOpen && selectedMedForStock && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+      {/* Modal: Receive Stock - Strictly for Ordered Medications */}
+      {isReceiveStockOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
             <button
               onClick={() => setIsReceiveStockOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold text-[#0E4749] mb-1 flex items-center gap-2">
-              <ArrowDownToLine className="w-5 h-5 text-emerald-600" /> Restock Medication
-            </h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Recording this receipt triggers an automatic stock increment in the database.
-            </p>
 
-            <form onSubmit={handleSubmitReceiveStock} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Medication</label>
-                <select
-                  value={selectedMedForStock.medicine_id}
-                  onChange={(e) => {
-                    const found = medicines.find(m => m.medicine_id === parseInt(e.target.value));
-                    if (found) setSelectedMedForStock(found);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
-                >
-                  {medicines.map((m) => (
-                    <option key={m.medicine_id} value={m.medicine_id}>
-                      {m.med_name} (Current: {m.stock_qty})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Quantity Received *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={receiveQty}
-                    onChange={(e) => setReceiveQty(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  />
+            {pendingOrderedItems.length === 0 || !selectedOrderedItem ? (
+              /* Empty state: No pending restock orders */
+              <div className="text-center py-4 space-y-3">
+                <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+                  <AlertCircle className="w-6 h-6" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Batch Expiry Date *</label>
-                  <input
-                    type="date"
-                    required
-                    value={receiveExpiry}
-                    onChange={(e) => setReceiveExpiry(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                  />
+                <h2 className="text-lg font-bold text-[#0E4749]">
+                  No Pending Restock Orders
+                </h2>
+                <p className="text-xs text-gray-600 max-w-sm mx-auto leading-relaxed">
+                  Stock can only be received for medicines that have been ordered from a supplier through an official Restock Purchase Order. Currently, there are no active orders awaiting delivery.
+                </p>
+                <div className="flex justify-center gap-2 pt-3 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setIsReceiveStockOpen(false)}
+                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsReceiveStockOpen(false);
+                      handleOpenCreateOrder();
+                    }}
+                    className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg flex items-center gap-2 shadow-sm transition"
+                  >
+                    <ShoppingCart className="w-4 h-4" /> Place Restock Order
+                  </button>
                 </div>
               </div>
+            ) : (
+              /* Form state: Select from ordered items only */
+              <>
+                <h2 className="text-lg font-bold text-[#0E4749] mb-1 flex items-center gap-2">
+                  <ArrowDownToLine className="w-5 h-5 text-emerald-600" /> Restock Ordered Medication
+                </h2>
+                <p className="text-xs text-gray-500 mb-4">
+                  Select medication received from an approved purchase order to record stock receipt.
+                </p>
 
-              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-xs text-emerald-800">
-                New calculated stock will be: <strong className="text-emerald-900">{selectedMedForStock.stock_qty + (receiveQty || 0)} units</strong>.
-              </div>
+                <form onSubmit={handleSubmitReceiveStock} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Ordered Medication from Supplier *
+                    </label>
+                    <select
+                      value={`${selectedOrderedItem.order_id}-${selectedOrderedItem.medicine_id}`}
+                      onChange={(e) => {
+                        const [oId, mId] = e.target.value.split('-').map(Number);
+                        const found = pendingOrderedItems.find(i => i.order_id === oId && i.medicine_id === mId);
+                        if (found) {
+                          setSelectedOrderedItem(found);
+                          setReceiveQty(found.requested_quantity);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    >
+                      {pendingOrderedItems.map((item) => (
+                        <option
+                          key={`${item.order_id}-${item.medicine_id}`}
+                          value={`${item.order_id}-${item.medicine_id}`}
+                        >
+                          {item.order_number}: {item.med_name} (Ordered: {item.requested_quantity} units)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsReceiveStockOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2"
-                >
-                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Confirm Stock Receipt
-                </button>
-              </div>
-            </form>
+                  {/* Order Context Pill */}
+                  <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 text-xs space-y-1">
+                    <div className="flex justify-between items-center text-[#0E4749] font-bold">
+                      <span>Order: {selectedOrderedItem.order_number}</span>
+                      <span className="font-mono bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[11px]">
+                        Expected: {new Date(selectedOrderedItem.expected_delivery_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="text-teal-900 text-[11px]">
+                      Supplier: <strong>{selectedOrderedItem.supplier_name}</strong>
+                    </div>
+                    <div className="text-teal-800 text-[11px]">
+                      Ordered: <strong>{selectedOrderedItem.requested_quantity} units</strong> • Current In-Stock: <strong>{selectedOrderedItem.current_stock} units</strong>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Quantity Received *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={receiveQty}
+                        onChange={(e) => setReceiveQty(parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-0.5">Delivered units from supplier</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">Batch Expiry Date *</label>
+                      <input
+                        type="date"
+                        required
+                        value={receiveExpiry}
+                        onChange={(e) => setReceiveExpiry(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                      <p className="text-[10px] text-gray-500 mt-0.5">Package expiration date</p>
+                    </div>
+                  </div>
+
+                  {/* Calculated Stock Banner */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 flex justify-between items-center">
+                    <span>New calculated stock:</span>
+                    <span className="font-bold text-sm text-emerald-800">
+                      {selectedOrderedItem.current_stock + (receiveQty || 0)} units
+                      <span className="text-[11px] font-normal text-emerald-700 ml-1">
+                        ({selectedOrderedItem.current_stock} + {receiveQty || 0})
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Fast Restock Entire Order Button if order has multiple items */}
+                  {(() => {
+                    const parentOrder = ordersList.find(o => o.order_id === selectedOrderedItem.order_id);
+                    if (parentOrder && parentOrder.items && parentOrder.items.length > 1) {
+                      return (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+                          <span className="text-gray-600 font-medium">
+                            Order contains <strong>{parentOrder.items.length} items</strong>
+                          </span>
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => handleRestockEntireOrder(selectedOrderedItem.order_id)}
+                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-semibold text-[11px] transition flex items-center gap-1"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5" /> Restock Entire Order ({parentOrder.items.length})
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <div className="flex justify-end gap-2 pt-3 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setIsReceiveStockOpen(false)}
+                      className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg flex items-center gap-2 shadow-sm transition"
+                    >
+                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Confirm Stock Receipt
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
