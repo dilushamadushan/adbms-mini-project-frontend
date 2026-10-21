@@ -218,4 +218,13 @@ export const receptionistService = {
     );
     return response.data;
   },
+
+  dischargeAuthorizedPatient: async (
+    admissionId: number,
+  ): Promise<{ message: string; admission: AdmissionRecord }> => {
+    const response = await apiClient.post<{ message: string; admission: AdmissionRecord }>(
+      `/receptionist/admissions/${admissionId}/discharge`,
+    );
+    return response.data;
+  },
 };

@@ -63,6 +63,9 @@ export default function ReceptionistAdmit() {
   const [patientSuccess, setPatientSuccess] = useState('');
 
   const selectedPatient = patients.find((patient) => String(patient.patient_id) === patientId);
+  const selectedActiveAdmission = admittedPatients.find(
+    (admission) => admission.patient_id === Number(patientId),
+  );
   const matchingPatients = useMemo(() => {
     const query = patientQuery.trim().toLocaleLowerCase();
     if (!query) return [];
@@ -130,6 +133,10 @@ export default function ReceptionistAdmit() {
       setError('Select a patient from the name suggestions before submitting.');
       return;
     }
+    if (selectedActiveAdmission) {
+      setError('This patient already has an active admission. Complete their discharge before admitting them again.');
+      return;
+    }
     if (!wardId || !doctorId || !gender || !reason.trim() || !guardianName.trim() || !guardianRelationship || !guardianContact.trim()) {
       setError('Complete all required admission and guardian fields.');
       return;
@@ -173,10 +180,14 @@ export default function ReceptionistAdmit() {
               ? String(item.msg)
               : 'Invalid admission field'
           )).join('. '));
+        } else if (detail !== undefined && detail !== null) {
+          setError(JSON.stringify(detail));
         } else if (caught.response?.status && caught.response.status >= 500) {
           setError('The server could not save the admission. Check that the Admissions table has the latest receptionist columns and review the backend error log.');
+        } else if (caught.response?.status) {
+          setError(`The admission request failed with HTTP ${caught.response.status}. Check the selected patient, ward, doctor, and guardian details.`);
         } else {
-          setError('The admission request was rejected. Verify the selected patient, ward, doctor, and guardian details.');
+          setError('The server could not be reached. Check your connection and try again.');
         }
       } else {
         setError('An unexpected error prevented the admission from being saved.');
@@ -261,13 +272,23 @@ export default function ReceptionistAdmit() {
                       onClick={() => selectPatient(patient)}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50"
                     >
-                      {patient.first_name} {patient.last_name}
+                      <span>{patient.first_name} {patient.last_name}</span>
+                      {admittedPatients.some((admission) => admission.patient_id === patient.patient_id) && (
+                        <span className="ml-2 text-xs font-semibold text-amber-700">Already admitted</span>
+                      )}
                     </button>
                   </li>
                 )) : <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient. Add them using the form on the right.</li>}
               </ul>
             )}
           </div>
+
+          {selectedActiveAdmission && (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              This patient already has an active admission in {selectedActiveAdmission.ward_name}
+              {' '}({selectedActiveAdmission.status}). Complete their discharge before admitting them again.
+            </p>
+          )}
 
           {selectedPatient && (
             <section aria-label="Patient details" className="grid gap-3 rounded-xl bg-[#F6F8F7] p-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -324,8 +345,8 @@ export default function ReceptionistAdmit() {
           {!doctors.length && <p className="text-sm text-amber-700">There are no active doctors available to select.</p>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           {success && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
-          <button disabled={isSaving || isSuccessCooldown || !patientId || !wards.length || !doctors.length} className="w-full rounded-lg bg-[#0E4749] p-3.5 font-bold text-white transition-colors hover:bg-[#0a383a] disabled:cursor-not-allowed disabled:opacity-50">
-            {isSaving ? 'Saving admission…' : isSuccessCooldown ? 'Admission recorded' : 'Confirm admission'}
+          <button disabled={isSaving || isSuccessCooldown || !patientId || Boolean(selectedActiveAdmission) || !wards.length || !doctors.length} className="w-full rounded-lg bg-[#0E4749] p-3.5 font-bold text-white transition-colors hover:bg-[#0a383a] disabled:cursor-not-allowed disabled:opacity-50">
+            {isSaving ? 'Saving admission…' : isSuccessCooldown ? 'Admission recorded' : selectedActiveAdmission ? 'Patient already admitted' : 'Confirm admission'}
           </button>
         </form>
 

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Calendar,
   ClipboardList, TestTube, BarChart3,
   LogOut, Menu, X, Plus, User, Search, Bell,
-  CalendarPlus, Pill, UserCircle, FileText, UserPlus, FileSearch, Grid, BookUser, ReceiptText
+  CalendarPlus, Pill, UserCircle, FileText, UserPlus, FileSearch, Grid, BookUser, ReceiptText, Activity
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/layout/NotificationBell';
@@ -39,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const doctorNavItems = [
     { href: "/doctor/dashboard", label: "Today's Patients", icon: LayoutDashboard },
+    { href: "/doctor/patient-action", label: "Patient Action", icon: Activity },
     { href: "/doctor/schedule", label: "My Schedule", icon: Calendar },
     { href: "/doctor/discharges", label: "Discharge Authorizations", icon: ClipboardList },
     { href: "/doctor/write", label: "Diagnosis / Rx", icon: FileText },
@@ -58,7 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/receptionist/patients", label: "Patient Records", icon: FileSearch },
     { href: "/receptionist/appointments", label: "Manage Appointments", icon: Calendar },
     { href: "/receptionist/admit", label: "Admit Patient", icon: UserPlus },
-    { href: "/receptionist/admissions", label: "Discharge / Billing", icon: ReceiptText },
+    { href: "/receptionist/admissions", label: "Discharge", icon: ReceiptText },
   ];
 
   const adminNavItems = [

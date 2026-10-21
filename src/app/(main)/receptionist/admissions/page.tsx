@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Hospital } from 'lucide-react';
-import Link from 'next/link';
+import { isAxiosError } from 'axios';
 import { receptionistService, type AdmissionRecord } from '@/services/receptionistService';
 
+/*
 function toDateInputValue(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -16,13 +17,18 @@ function getAdmissionDate(admittedAt: string): string {
   const date = new Date(admittedAt);
   return toDateInputValue(date);
 }
+*/
 
 export default function ReceptionistAdmissions() {
   const [admissions, setAdmissions] = useState<AdmissionRecord[]>([]);
   const [selectedAdmission, setSelectedAdmission] = useState<AdmissionRecord | null>(null);
+  /*
   const [dischargeDate, setDischargeDate] = useState(toDateInputValue(new Date()));
+  */
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isDischarging, setIsDischarging] = useState(false);
 
   useEffect(() => {
     receptionistService.getAdmissions(true)
@@ -35,41 +41,73 @@ export default function ReceptionistAdmissions() {
 
   function selectAdmission(admission: AdmissionRecord) {
     setSelectedAdmission(admission);
+    setError('');
+    setSuccess('');
+    /*
     const today = toDateInputValue(new Date());
     const admittedDate = getAdmissionDate(admission.admitted_at);
     setDischargeDate(today < admittedDate ? admittedDate : today);
+    */
+  }
+
+  async function dischargeSelectedPatient() {
+    if (!selectedAdmission || isDischarging) return;
+
+    setIsDischarging(true);
     setError('');
+    setSuccess('');
+    try {
+      const result = await receptionistService.dischargeAuthorizedPatient(selectedAdmission.admission_id);
+      setSuccess(`${result.admission.patient_name} discharged successfully.`);
+      setAdmissions((current) => current.filter(
+        (admission) => admission.admission_id !== selectedAdmission.admission_id,
+      ));
+      setSelectedAdmission(null);
+    } catch (caught: unknown) {
+      if (isAxiosError(caught)) {
+        const detail: unknown = caught.response?.data?.detail;
+        setError(
+          typeof detail === 'string'
+            ? detail
+            : caught.response?.status
+              ? `Discharge failed with HTTP ${caught.response.status}.`
+              : 'The server could not be reached. Check your connection and try again.',
+        );
+      } else {
+        setError('An unexpected error prevented the patient from being discharged.');
+      }
+    } finally {
+      setIsDischarging(false);
+    }
   }
 
   return (
     <div className="space-y-6">
       <header>
         <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Admissions</p>
-        <h2 className="mt-1 text-2xl font-bold text-[#0E4749]">Discharge and Billing</h2>
-        <p className="mt-2 text-sm text-[#5B6472]">Select a patient authorized for discharge to review their admission and prepare discharge details.</p>
+        <h2 className="mt-1 text-2xl font-bold text-[#0E4749]">Discharge</h2>
+        <p className="mt-2 text-sm text-[#5B6472]">Select a patient authorized for discharge, review their details, then discharge them.</p>
       </header>
 
       {error && <p role="alert" className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {success && <p role="status" className="rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700">{success}</p>}
 
       {isLoading ? (
         <p className="rounded-xl border border-[#DCE3E0] bg-white p-6 text-sm text-[#5B6472]">Loading discharge authorizations…</p>
       ) : selectedAdmission ? (
         <section className="max-w-3xl space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setSelectedAdmission(null)}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#0E4749] hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to authorized patients
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedAdmission(null)}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0E4749] hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to authorized patients
+          </button>
 
           <div className="border-b border-[#E8EDEA] pb-4">
-            <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Discharge form</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-[#5B6472]">Discharge patient</p>
             <h3 className="mt-1 text-xl font-bold text-[#0E4749]">{selectedAdmission.patient_name}</h3>
-            <p className="mt-1 text-sm text-[#5B6472]">Review the admission details and select the discharge date.</p>
           </div>
 
           <section aria-label="Admission details" className="space-y-4 rounded-xl bg-[#F6F8F7] p-5">
@@ -83,6 +121,8 @@ export default function ReceptionistAdmissions() {
             <p className="text-sm"><span className="block text-xs text-[#5B6472]">Doctor&apos;s discharge notes</span><strong className="mt-1 block">{selectedAdmission.discharge_notes || 'No notes provided'}</strong></p>
           </section>
 
+          {/*
+          Billing flow disabled for now. Keep the code for later use.
           <label htmlFor="discharge-date" className="block text-sm font-semibold">
             Discharge date
             <input
@@ -101,6 +141,16 @@ export default function ReceptionistAdmissions() {
           >
             Prepare bill
           </Link>
+          */}
+
+          <button
+            type="button"
+            onClick={dischargeSelectedPatient}
+            disabled={isDischarging}
+            className="w-full rounded-lg bg-[#0E4749] p-3.5 font-bold text-white transition-colors hover:bg-[#0a383a] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDischarging ? 'Discharging patient…' : 'Discharge'}
+          </button>
         </section>
       ) : admissions.length ? (
         <section className="space-y-3">
