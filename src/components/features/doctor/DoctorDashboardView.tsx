@@ -97,14 +97,14 @@ export function DoctorDashboardView({ doctorId, doctorName }: { doctorId: number
   const title = isToday
     ? "Today's Appointments"
     : isUpcoming
-    ? "Upcoming Appointments"
-    : `Appointments · ${formatDateLabel(selected)}`;
+      ? "Upcoming Appointments"
+      : `Appointments · ${formatDateLabel(selected)}`;
 
   const emptyText = isToday
     ? 'No appointments today.'
     : isUpcoming
-    ? 'No upcoming appointments on this date.'
-    : 'No appointments on this date.';
+      ? 'No upcoming appointments on this date.'
+      : 'No appointments on this date.';
 
   return (
     <div className="space-y-6">

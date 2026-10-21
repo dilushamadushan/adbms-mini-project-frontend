@@ -6,7 +6,7 @@ const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'COMPLETED',
     scheduled: 'SCHEDULED',
     cancelled: 'CANCELLED'
-   
+
 };
 
 function mapAppointment(a: ApiAppointment): DoctorAppointment {
