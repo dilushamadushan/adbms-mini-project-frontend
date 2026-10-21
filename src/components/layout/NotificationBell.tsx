@@ -219,21 +219,19 @@ export function NotificationBell() {
           <div className="flex border-b border-[#DCE3E0] bg-white text-xs font-semibold">
             <button
               onClick={() => setFilter('ALL')}
-              className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                filter === 'ALL'
+              className={`flex-1 py-2 text-center border-b-2 transition-colors ${filter === 'ALL'
                   ? 'border-[#0E4749] text-[#0E4749]'
                   : 'border-transparent text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
             >
               All
             </button>
             <button
               onClick={() => setFilter('UNREAD')}
-              className={`flex-1 py-2 text-center border-b-2 transition-colors ${
-                filter === 'UNREAD'
+              className={`flex-1 py-2 text-center border-b-2 transition-colors ${filter === 'UNREAD'
                   ? 'border-[#0E4749] text-[#0E4749]'
                   : 'border-transparent text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
             >
               Unread ({unreadCount})
             </button>
@@ -272,9 +270,8 @@ export function NotificationBell() {
                         setExpandedId(isExpanded ? null : n.notification_id);
                       }
                     }}
-                    className={`p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group flex items-start gap-3 ${
-                      !n.is_read ? 'bg-teal-50/40' : ''
-                    }`}
+                    className={`p-3.5 hover:bg-gray-50 transition-colors cursor-pointer group flex items-start gap-3 ${!n.is_read ? 'bg-teal-50/40' : ''
+                      }`}
                   >
                     <div className="w-8 h-8 rounded-full bg-white border border-[#DCE3E0] shadow-2xs flex items-center justify-center flex-shrink-0 mt-0.5">
                       {getNotificationIcon(n.type)}
