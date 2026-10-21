@@ -2,7 +2,69 @@ import apiClient from '@/lib/apiClient';
 import { Patient } from '@/types';
 import { ApiResponse, PaginatedResponse } from '@/types/api';
 
+export interface PatientProfile {
+  patient_id: number;
+  user_id: number;
+  username: string;
+  email: string | null;
+  first_name: string;
+  last_name: string;
+  dob: string | null;
+  blood_group: string | null;
+  emergency_contact: string | null;
+  allergies: string | null;
+}
+
+export interface DoctorDepartmentItem {
+  doctor_name: string;
+  department_name: string;
+}
+
+export interface BookAppointmentData {
+  doctor_id: number;
+  dept_id: number;
+  apt_date: string;
+  time_slot: string;
+  patient_id?: number;
+}
+
+export interface BookAppointmentResult {
+  apt_id: number;
+  patient_id: number;
+  doctor_id: number;
+  dept_id: number;
+  apt_date: string;
+  time_slot: string;
+  status: string;
+}
+
 export const patientService = {
+
+  getMyProfile: async (): Promise<PatientProfile> => {
+    const response = await apiClient.get<PatientProfile>('/users/patient/me');
+    return response.data;
+  },
+
+  getDoctorDepartments: async (): Promise<DoctorDepartmentItem[]> => {
+    const response = await apiClient.get<DoctorDepartmentItem[]>('/patient/doctor-departments');
+    return response.data;
+  },
+
+  getAvailableSlots: async (doctorName: string, departmentName: string, aptDate: string): Promise<string[]> => {
+    const response = await apiClient.get<string[]>('/patient/available-slots', {
+      params: {
+        doctor_name: doctorName,
+        department_name: departmentName,
+        apt_date: aptDate,
+      },
+    });
+    return response.data;
+  },
+
+  bookAppointment: async (data: BookAppointmentData): Promise<BookAppointmentResult> => {
+    const response = await apiClient.post<BookAppointmentResult>('/patient/book-appointment', data);
+    return response.data;
+  },
   
   getAll: (search?: string) =>
     apiClient.get<PaginatedResponse<Patient>>('/patients', { params: { search } }),
@@ -19,3 +81,4 @@ export const patientService = {
   update: (id: string, data: Partial<Patient>) =>
     apiClient.patch<ApiResponse<Patient>>(`/patients/${id}`, data),
 };
+
