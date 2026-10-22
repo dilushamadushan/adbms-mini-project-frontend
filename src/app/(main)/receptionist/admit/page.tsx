@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { isAxiosError } from 'axios';
-import { Hospital, UserPlus } from 'lucide-react';
+import { Hospital } from 'lucide-react';
 import {
   receptionistService,
   type AdmissionRecord,
@@ -49,24 +49,12 @@ export default function ReceptionistAdmit() {
   const [guardianName, setGuardianName] = useState('');
   const [guardianRelationship, setGuardianRelationship] = useState('');
   const [guardianContact, setGuardianContact] = useState('');
-  const [newPatient, setNewPatient] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    dob: '',
-    blood_group: 'Unknown',
-    emergency_contact: '',
-    allergies: '',
-  });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshingAdmissions, setIsRefreshingAdmissions] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSuccessCooldown, setIsSuccessCooldown] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [patientError, setPatientError] = useState('');
-  const [patientSuccess, setPatientSuccess] = useState('');
 
   const selectedPatient = patients.find((patient) => String(patient.patient_id) === patientId);
   const selectedActiveAdmission = admittedPatients.find(
@@ -75,6 +63,9 @@ export default function ReceptionistAdmit() {
   const selectedGuardianAdmission = selectedActiveAdmission && admissionNeedsGuardian(selectedActiveAdmission)
     ? selectedActiveAdmission
     : null;
+  const guardianMissingAdmissions = admittedPatients
+    .filter(admissionNeedsGuardian)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const matchingPatients = useMemo(() => {
     const query = patientQuery.trim().toLocaleLowerCase();
     if (!query) return [];
@@ -256,39 +247,6 @@ export default function ReceptionistAdmit() {
     }
   }
 
-  async function registerPatient(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsRegistering(true);
-    setPatientError('');
-    setPatientSuccess('');
-    try {
-      const patient = await receptionistService.registerPatient({
-        ...newPatient,
-        first_name: newPatient.first_name.trim(),
-        last_name: newPatient.last_name.trim(),
-        email: newPatient.email.trim(),
-        emergency_contact: newPatient.emergency_contact.trim(),
-        allergies: newPatient.allergies.trim() || 'Unknown',
-      });
-      setPatients((current) => [...current, patient]);
-      selectPatient(patient);
-      setNewPatient({
-        first_name: '',
-        last_name: '',
-        email: '',
-        dob: '',
-        blood_group: 'Unknown',
-        emergency_contact: '',
-        allergies: '',
-      });
-      setPatientSuccess(`${patient.first_name} ${patient.last_name} was added and selected for admission.`);
-    } catch {
-      setPatientError('Patient registration failed. Check that the email is not already registered.');
-    } finally {
-      setIsRegistering(false);
-    }
-  }
-
   if (isLoading) return <p className="rounded-lg border border-[#DCE3E0] bg-white p-5 text-sm text-[#5B6472]">Loading patients, wards, and doctors…</p>;
 
   return (
@@ -302,7 +260,7 @@ export default function ReceptionistAdmit() {
         <form onSubmit={submitAdmission} className="min-w-0 space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
           <div className="border-b border-[#E8EDEA] pb-4">
             <h3 className="text-lg font-bold text-[#0E4749]">Admission details</h3>
-            <p className="mt-1 text-sm text-[#5B6472]">Select a patient by name. Active admissions missing guardian details are listed so you can complete their record.</p>
+            <p className="mt-1 text-sm text-[#5B6472]">Select a patient by name or choose one from the list of active admissions missing guardian details.</p>
           </div>
 
           <div className="relative">
@@ -351,7 +309,7 @@ export default function ReceptionistAdmit() {
                       </button>
                     </li>
                   );
-                }) : <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient. Add them using the form on the right.</li>}
+                }                ) : <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient found.</li>}
               </ul>
             )}
           </div>
@@ -436,41 +394,38 @@ export default function ReceptionistAdmit() {
         </form>
 
         <aside className="min-w-0 rounded-2xl border border-[#DCE3E0] bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center gap-3 border-b border-[#E8EDEA] pb-4">
-            <span className="rounded-lg bg-teal-50 p-2.5 text-[#0E4749]"><UserPlus className="h-5 w-5" /></span>
-            <div><h3 className="font-bold text-[#0E4749]">Add patient</h3><p className="mt-1 text-xs text-[#5B6472]">Register a new patient here.</p></div>
+          <div className="mb-4 border-b border-[#E8EDEA] pb-4">
+            <h3 className="font-bold text-[#0E4749]">Patients missing guardian details</h3>
+            <p className="mt-1 text-xs text-[#5B6472]">Active admissions, newest first by record creation time.</p>
           </div>
-          <form onSubmit={registerPatient} className="space-y-4">
-            <label className="block text-sm font-semibold">First name
-              <input required maxLength={100} value={newPatient.first_name} onChange={(event) => setNewPatient((current) => ({ ...current, first_name: event.target.value }))} className={inputClass} />
-            </label>
-            <label className="block text-sm font-semibold">Last name
-              <input required maxLength={100} value={newPatient.last_name} onChange={(event) => setNewPatient((current) => ({ ...current, last_name: event.target.value }))} className={inputClass} />
-            </label>
-            <label className="block text-sm font-semibold">Email
-              <input required type="email" value={newPatient.email} onChange={(event) => setNewPatient((current) => ({ ...current, email: event.target.value }))} className={inputClass} />
-            </label>
-            <label className="block text-sm font-semibold">Date of birth
-              <input required type="date" max={new Date().toISOString().slice(0, 10)} value={newPatient.dob} onChange={(event) => setNewPatient((current) => ({ ...current, dob: event.target.value }))} className={inputClass} />
-            </label>
-            <label className="block text-sm font-semibold">Patient phone
-              <input required maxLength={20} value={newPatient.emergency_contact} onChange={(event) => setNewPatient((current) => ({ ...current, emergency_contact: event.target.value }))} className={inputClass} />
-            </label>
-            <label className="block text-sm font-semibold">Blood group
-              <select value={newPatient.blood_group} onChange={(event) => setNewPatient((current) => ({ ...current, blood_group: event.target.value }))} className={inputClass}>
-                <option>Unknown</option>
-                {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((group) => <option key={group}>{group}</option>)}
-              </select>
-            </label>
-            <label className="block text-sm font-semibold">Allergies
-              <textarea rows={2} maxLength={2000} value={newPatient.allergies} onChange={(event) => setNewPatient((current) => ({ ...current, allergies: event.target.value }))} placeholder="Enter None or Unknown if applicable" className={inputClass} />
-            </label>
-            {patientError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700">{patientError}</p>}
-            {patientSuccess && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-700">{patientSuccess}</p>}
-            <button disabled={isRegistering} className="w-full rounded-lg bg-[#E07856] p-3 font-bold text-white transition-colors hover:bg-[#c96749] disabled:cursor-not-allowed disabled:opacity-50">
-              {isRegistering ? 'Adding patient…' : 'Add patient'}
-            </button>
-          </form>
+          {guardianMissingAdmissions.length ? (
+            <ul className="max-h-[32rem] space-y-2 overflow-y-auto">
+              {guardianMissingAdmissions.map((admission) => {
+                const patient = patients.find((item) => item.patient_id === admission.patient_id);
+                return (
+                  <li key={admission.admission_id}>
+                    <button
+                      type="button"
+                      disabled={!patient}
+                      onClick={() => {
+                        if (patient) selectPatient(patient);
+                        else setError(`Patient details for ${admission.patient_name} could not be loaded.`);
+                      }}
+                      className="w-full rounded-lg border border-[#DCE3E0] p-3 text-left hover:border-[#0E4749] hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="block font-semibold text-[#0E4749]">{admission.patient_name}</span>
+                      <span className="mt-1 block text-xs text-[#5B6472]">{admission.ward_name} · {admission.status}</span>
+                      <time className="mt-1 block text-xs text-[#5B6472]" dateTime={admission.created_at}>
+                        Created {new Date(admission.created_at).toLocaleString()}
+                      </time>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="py-4 text-center text-sm text-[#5B6472]">No active admissions are missing guardian details.</p>
+          )}
         </aside>
       </div>
 
@@ -499,7 +454,8 @@ export default function ReceptionistAdmit() {
                   <th className="p-4">Admitting doctor</th>
                   <th className="p-4">Admitted</th>
                   <th className="p-4">Status</th>
-                  <th className="p-4">Reason</th>
+                  <th className="p-4">Guardian name</th>
+                  <th className="p-4">Guardian phone</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DCE3E0]">
@@ -515,7 +471,8 @@ export default function ReceptionistAdmit() {
                     <td className="p-4">{admission.admitted_doctor_name}</td>
                     <td className="p-4">{new Date(admission.admitted_at).toLocaleDateString()}</td>
                     <td className="p-4">{admission.status}</td>
-                    <td className="max-w-sm p-4">{admission.admission_reason}</td>
+                    <td className="p-4">{admission.guardian_name || 'Not provided'}</td>
+                    <td className="p-4">{admission.guardian_contact || 'Not provided'}</td>
                   </tr>
                 ))}
               </tbody>

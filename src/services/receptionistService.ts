@@ -52,6 +52,7 @@ export interface AdmissionRecord {
   bed_id: number | null;
   bed_number: string | null;
   admitted_at: string;
+  created_at: string;
   admission_reason: string;
   status: 'Pending' | 'Admitted' | 'Discharge Authorized' | 'Discharged';
   discharge_authorized_by: number | null;
