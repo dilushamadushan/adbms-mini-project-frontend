@@ -265,43 +265,13 @@ export interface IntakeOutputCreatePayload {
   notes?: string;
 }
 
-export interface ShiftHandoverItem {
-  handover_id: number;
-  ward_id: number;
-  ward_name?: string | null;
-  outgoing_nurse_id: number;
-  outgoing_nurse_name?: string | null;
-  incoming_nurse_id?: number | null;
-  incoming_nurse_name?: string | null;
-  shift_type: 'Day' | 'Evening' | 'Night';
-  handover_date: string;
-  summary_notes: string;
-  critical_patients_count: number;
-  pending_tasks_count: number;
-  status: 'Pending_Acceptance' | 'Accepted';
-  accepted_at?: string | null;
-  created_at: string;
-}
 
-export interface ShiftHandoverCreatePayload {
-  shift_type: string;
-  summary_notes: string;
-}
-
-export interface WardInventoryItem {
-  request_id: number;
-  ward_id: number;
-  item_name: string;
-  quantity: number;
-  status: 'Requested' | 'Dispatched' | 'Received';
-  created_at: string;
-  requested_by_nurse?: string | null;
-}
-
-export interface WardInventoryCreatePayload {
-  medicine_id?: number;
-  item_name: string;
-  quantity: number;
+export interface NurseStaffItem {
+  staff_id: number;
+  user_id: number;
+  nurse_name: string;
+  username: string;
+  specialty?: string | null;
 }
 
 export const nurseService = {
@@ -413,28 +383,9 @@ export const nurseService = {
     return res.data;
   },
 
-  getCurrentShiftHandover: async (): Promise<ShiftHandoverItem[]> => {
-    const res = await apiClient.get<ShiftHandoverItem[]>('/nurse/handover/current');
-    return res.data;
-  },
 
-  createShiftHandover: async (payload: ShiftHandoverCreatePayload): Promise<{ handover_id: number; status: string }> => {
-    const res = await apiClient.post('/nurse/handover/create', payload);
-    return res.data;
-  },
-
-  acceptShiftHandover: async (handoverId: number): Promise<{ handover_id: number; status: string }> => {
-    const res = await apiClient.post(`/nurse/handover/${handoverId}/accept`);
-    return res.data;
-  },
-
-  getWardInventoryRequests: async (): Promise<WardInventoryItem[]> => {
-    const res = await apiClient.get<WardInventoryItem[]>('/nurse/inventory/requests');
-    return res.data;
-  },
-
-  requestWardStock: async (payload: WardInventoryCreatePayload): Promise<any> => {
-    const res = await apiClient.post('/nurse/inventory/request', payload);
+  getWardNurses: async (): Promise<NurseStaffItem[]> => {
+    const res = await apiClient.get<NurseStaffItem[]>('/nurse/ward-nurses');
     return res.data;
   },
 };

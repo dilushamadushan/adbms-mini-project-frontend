@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { WardBedItem } from '@/services/nurseService';
 import { 
   Sparkles, CheckCircle2, UserPlus, ArrowRight, 
-  Check, Clock
+  Check, Clock, LogOut
 } from 'lucide-react';
 
 interface BedCardProps {
@@ -16,6 +16,7 @@ interface BedCardProps {
   time?: string;
   onQuickClean?: (bedId: number, e: React.MouseEvent) => void;
   onOpenAssignModal?: (bed: WardBedItem, e: React.MouseEvent) => void;
+  onReleaseBed?: (bed: WardBedItem, e: React.MouseEvent) => void;
   cleaningLoading?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function BedCard({
   time, 
   onQuickClean,
   onOpenAssignModal,
+  onReleaseBed,
   cleaningLoading 
 }: BedCardProps) {
   const router = useRouter();
@@ -44,6 +46,7 @@ export function BedCard({
   const isOccupied = activeBed.bed_status === 'Occupied';
   const isAvailable = activeBed.bed_status === 'Available';
   const isCleaning = activeBed.bed_status === 'Cleaning';
+  const isDischargeReady = isOccupied && activeBed.discharge_status === 'Authorized';
   const isCritical = activeBed.vitals_status === 'CRITICAL' || status === 'CRITICAL';
   const isModerate = activeBed.vitals_status === 'MODERATE' || status === 'MODERATE';
 
@@ -52,7 +55,12 @@ export function BedCard({
   let dotColor = "bg-emerald-500";
   let statusText = "AVAILABLE";
 
-  if (isCritical) {
+  if (isDischargeReady) {
+    cardBorder = "border-[#E07856] hover:border-[#d06846] shadow-xs ring-1 ring-[#E07856]/40";
+    statusColor = "text-[#E07856]";
+    dotColor = "bg-[#E07856] animate-pulse";
+    statusText = "DISCHARGED";
+  } else if (isCritical) {
     cardBorder = "border-red-400 hover:border-red-500 shadow-xs ring-1 ring-red-400/50";
     statusColor = "text-red-600";
     dotColor = "bg-red-500 animate-pulse";
@@ -94,17 +102,22 @@ export function BedCard({
       onClick={handleCardClick}
       className={`bg-white rounded-2xl border-2 ${cardBorder} p-4 flex flex-col justify-between min-h-[220px] transition-all duration-200 cursor-pointer relative group overflow-hidden shadow-2xs`}
     >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <h3 className="font-bold text-base text-gray-900 tracking-tight group-hover:text-[#0E4749] transition-colors">
+      <div className="flex items-center justify-between gap-1.5 mb-2">
+        <h3 className="font-bold text-base text-gray-900 tracking-tight group-hover:text-[#0E4749] transition-colors whitespace-nowrap flex-shrink-0">
           {activeBed.bed_number}
         </h3>
 
-        {isOccupied && (isModerate || isCritical) && (
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 shadow-2xs">
-            <Clock className="w-3 h-3 text-amber-600" />
+        {isDischargeReady ? (
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 text-[#E07856] border border-orange-200 flex items-center gap-1 shadow-2xs whitespace-nowrap flex-shrink-0">
+            <CheckCircle2 className="w-2.5 h-2.5 text-[#E07856] flex-shrink-0" />
+            Discharged
+          </span>
+        ) : isOccupied && (isModerate || isCritical) ? (
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 shadow-2xs whitespace-nowrap flex-shrink-0">
+            <Clock className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
             1 due
           </span>
-        )}
+        ) : null}
       </div>
 
       <div className="flex-1 flex flex-col justify-center">
@@ -121,7 +134,7 @@ export function BedCard({
               </p>
             </div>
 
-            <div className="text-xs font-semibold text-gray-700 tracking-tight">
+            <div className="text-xs font-semibold text-gray-700 tracking-tight whitespace-nowrap truncate">
               BP {activeBed.latest_bp || '120/80'} • HR {activeBed.latest_pulse || 72} • SpO₂ {activeBed.latest_spo2 ? `${activeBed.latest_spo2}%` : '98%'}
             </div>
 
@@ -157,6 +170,24 @@ export function BedCard({
                 )}
               </svg>
             </div>
+
+            {isDischargeReady && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onReleaseBed) {
+                    onReleaseBed(activeBed, e);
+                  } else {
+                    router.push(`/nurse/bed/${activeBed.bed_id}`);
+                  }
+                }}
+                className="w-full py-1.5 px-2 bg-[#E07856] hover:bg-[#d06846] text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm active:scale-98"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Release Bed
+              </button>
+            )}
           </div>
         ) : isAvailable ? (
           <div className="space-y-2 py-1">
@@ -213,13 +244,13 @@ export function BedCard({
       </div>
 
       <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
-        <div className={`font-bold uppercase tracking-wider flex items-center gap-1.5 ${statusColor}`}>
-          <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`}></span>
+        <div className={`font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap text-[11px] ${statusColor}`}>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`}></span>
           {statusText}
         </div>
 
         {isOccupied && (
-          <span className="text-[11px] font-bold text-[#0E4749] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+          <span className="text-[11px] font-bold text-[#0E4749] group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5 whitespace-nowrap">
             Open Station <ArrowRight className="w-3 h-3" />
           </span>
         )}
