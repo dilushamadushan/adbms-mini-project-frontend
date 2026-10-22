@@ -5,19 +5,38 @@ import { BedDouble, LogOut, FileSearch, Pill } from 'lucide-react';
 import { AdmitPatientForm } from './AdmitPatientForm';
 import { DischargePatientForm } from './DischargePatientForm';
 import { AdmissionDetailsView } from './AdmissionDetailsView';
+import type { AdmissionDetails } from '@/types/patientAction';
 
 type AdmissionViewTab = 'admit' | 'discharge' | 'details';
 
 interface AdmissionReferralPanelProps {
+  patientId: number;
+  patientName: string;
+  patientGender: string;
+  doctorId: number;
+  doctorName: string;
+  userId: number;
+  admissionReason: string;
+  admission: AdmissionDetails | null;
+  isAdmitted: boolean;
   initialTab?: AdmissionViewTab;
-  onAdmissionSubmit?: (data: any) => void | Promise<void>;
-  onDischargeSubmit?: (data: any) => void | Promise<void>;
+  onAdmissionSubmit?: (data: import('@/types/patientAction').AdmissionRequestData) => Promise<void>;
+  onDischargeSubmit?: (data: unknown) => void;
   onSwitchToPrescription?: () => void;
   isSubmitting?: boolean;
 }
 
 export function AdmissionReferralPanel({
   initialTab = 'discharge',
+  patientId,
+  patientName,
+  patientGender,
+  doctorId,
+  doctorName,
+  userId,
+  admissionReason,
+  admission,
+  isAdmitted,
   onAdmissionSubmit,
   onDischargeSubmit,
   onSwitchToPrescription,
@@ -25,16 +44,20 @@ export function AdmissionReferralPanel({
 }: AdmissionReferralPanelProps) {
   const [currentTab, setCurrentTab] = useState<AdmissionViewTab>(initialTab);
 
+  React.useEffect(() => {
+    setCurrentTab(isAdmitted ? 'discharge' : 'admit');
+  }, [isAdmitted]);
+
   const tabs: Array<{ id: AdmissionViewTab; label: string; icon: React.ElementType }> = [
-    { id: 'admit', label: 'Admit', icon: BedDouble },
-    { id: 'discharge', label: 'Discharge', icon: LogOut },
+    ...(!isAdmitted ? [{ id: 'admit' as const, label: 'Admit', icon: BedDouble }] : []),
+    ...(isAdmitted ? [{ id: 'discharge' as const, label: 'Discharge', icon: LogOut }] : []),
     { id: 'details', label: 'View Admission Details', icon: FileSearch },
   ];
 
   return (
     <div className="space-y-0">
       {/* 3 Tabs Row exactly as in the design screenshot */}
-      <div className="grid grid-cols-3 rounded-t-xl border-t border-x border-[#DCE3E0] bg-gray-50/70 overflow-hidden">
+      <div className={`grid ${tabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} rounded-t-xl border-t border-x border-[#DCE3E0] bg-gray-50/70 overflow-hidden`}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
@@ -58,17 +81,24 @@ export function AdmissionReferralPanel({
 
       {/* Main Content Card directly underneath */}
       <div className="rounded-b-xl border border-[#DCE3E0] bg-white p-5 shadow-sm space-y-4">
-        {currentTab === 'admit' && (
+        {!isAdmitted && currentTab === 'admit' && (
           <AdmitPatientForm
-            onConfirmAdmit={(data) => {
-              onAdmissionSubmit?.(data);
+            patientName={patientName}
+            patientGender={patientGender}
+            doctorId={doctorId}
+            doctorName={doctorName}
+            admissionReason={admissionReason}
+            userId={userId}
+            patientId={patientId}
+            onConfirmAdmit={async (data) => {
+              await onAdmissionSubmit?.(data);
               setCurrentTab('details');
             }}
             isSubmitting={isSubmitting}
           />
         )}
 
-        {currentTab === 'discharge' && (
+        {isAdmitted && currentTab === 'discharge' && (
           <DischargePatientForm
             onConfirmDischarge={(data) => {
               onDischargeSubmit?.(data);
@@ -80,7 +110,7 @@ export function AdmissionReferralPanel({
         )}
 
         {currentTab === 'details' && (
-          <AdmissionDetailsView />
+          <AdmissionDetailsView admission={admission} />
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { usePatientAction } from '@/hooks/usePatientAction';
 import { PatientActionHeader } from './PatientActionHeader';
 import { PatientInfoCard } from './PatientInfoCard';
@@ -17,9 +18,12 @@ interface PatientActionViewProps {
 }
 
 export function PatientActionView({ appointmentId }: PatientActionViewProps) {
+  const { user } = useAuth();
   const {
     patient,
     appointment,
+    isAdmitted,
+    admission,
     history,
     notes,
     updateNotes,
@@ -42,6 +46,7 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
     isSendingPharmacy,
     isSubmittingEscalation,
     actionNotice,
+    actionNoticeTone,
   } = usePatientAction(appointmentId);
 
   if (loading) {
@@ -76,7 +81,9 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
 
       {/* Floating Action Notice Toast */}
       {actionNotice && (
-        <div className="rounded-lg bg-[#0E4749] px-4 py-2.5 text-xs font-medium text-white shadow-md transition-all">
+        <div className={`rounded-lg px-4 py-2.5 text-xs font-medium text-white shadow-md transition-all ${
+          actionNoticeTone === 'success' ? 'bg-emerald-600' : 'bg-[#0E4749]'
+        }`}>
           {actionNotice}
         </div>
       )}
@@ -111,7 +118,16 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
             />
           ) : (
             <AdmissionReferralPanel
-              initialTab="discharge"
+              initialTab={isAdmitted ? 'discharge' : 'admit'}
+              isAdmitted={isAdmitted}
+              patientId={Number(patient.id)}
+              patientName={patient.name}
+              patientGender={patient.gender}
+              doctorName={appointment.doctorName}
+              doctorId={appointment.doctorId}
+              userId={Number(user?.user_id)}
+              admissionReason={appointment.reason}
+              admission={admission}
               onAdmissionSubmit={submitAdmission}
               onDischargeSubmit={submitDischargeDisagree}
               onSwitchToPrescription={() => setActiveAction('prescription')}

@@ -22,9 +22,9 @@ export function AppointmentOverview({ appointment }: AppointmentOverviewProps) {
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600">
             <Calendar className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className="block text-xs font-medium text-slate-500">Date</span>
-            <span className="text-sm font-bold text-slate-900">
+            <span className="block whitespace-nowrap text-xs font-bold text-slate-900">
               {appointment.formattedDate || appointment.date}
             </span>
           </div>
