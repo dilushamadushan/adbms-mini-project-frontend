@@ -14,7 +14,7 @@ import {
 import { 
   RefreshCw, BedDouble, AlertCircle, Sparkles, Filter, Clock, 
   Pill, ClipboardList, AlertTriangle, ChevronRight, UserCheck, 
-  Search, Check, Package, X, UserPlus, ArrowRight, User
+  Search, Check, Package, X, UserPlus, ArrowRight, User, LogOut
 } from 'lucide-react';
 
 export default function NurseWardOverview() {
@@ -25,7 +25,7 @@ export default function NurseWardOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'ALL' | 'Occupied' | 'Available' | 'Cleaning' | 'Critical'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'Occupied' | 'Available' | 'Cleaning' | 'Critical' | 'Discharge'>('ALL');
   const [searchInput, setSearchInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [cleaningBedId, setCleaningBedId] = useState<number | null>(null);
@@ -33,6 +33,12 @@ export default function NurseWardOverview() {
   const [assignModalBed, setAssignModalBed] = useState<WardBedItem | null>(null);
   const [selectedAdmissionId, setSelectedAdmissionId] = useState<number | null>(null);
   const [assigningLoading, setAssigningLoading] = useState(false);
+
+  const [releaseModalBed, setReleaseModalBed] = useState<WardBedItem | null>(null);
+  const [releaseIvRemoved, setReleaseIvRemoved] = useState(false);
+  const [releaseMedsCounseled, setReleaseMedsCounseled] = useState(false);
+  const [releaseSummaryHanded, setReleaseSummaryHanded] = useState(false);
+  const [releasingLoading, setReleasingLoading] = useState(false);
 
   const fetchOverview = async (wardId?: number) => {
     setLoading(true);
@@ -122,9 +128,40 @@ export default function NurseWardOverview() {
     }
   };
 
+  const handleOpenReleaseModal = (bed: WardBedItem, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setReleaseModalBed(bed);
+    setReleaseIvRemoved(false);
+    setReleaseMedsCounseled(false);
+    setReleaseSummaryHanded(false);
+  };
+
+  const handleConfirmRelease = async () => {
+    if (!releaseModalBed?.admission_id) return;
+    setReleasingLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      await nurseService.completeDischarge(releaseModalBed.admission_id);
+      setSuccessMsg(`Patient discharged and Bed ${releaseModalBed.bed_number} successfully released! Bed is now in Cleaning status.`);
+      setReleaseModalBed(null);
+      await fetchOverview();
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || 'Failed to release bed.');
+    } finally {
+      setReleasingLoading(false);
+    }
+  };
+
   const criticalBedsCount = useMemo(() => {
     if (!data?.beds) return 0;
     return data.beds.filter(b => b.vitals_status === 'CRITICAL').length;
+  }, [data]);
+
+  const dischargeBedsCount = useMemo(() => {
+    if (!data?.beds) return 0;
+    return data.beds.filter(b => b.discharge_status === 'Authorized').length;
   }, [data]);
 
   const filteredBeds = useMemo(() => {
@@ -135,6 +172,7 @@ export default function NurseWardOverview() {
       else if (filter === 'Available') matchesStatus = b.bed_status === 'Available';
       else if (filter === 'Cleaning') matchesStatus = b.bed_status === 'Cleaning';
       else if (filter === 'Critical') matchesStatus = b.vitals_status === 'CRITICAL';
+      else if (filter === 'Discharge') matchesStatus = b.discharge_status === 'Authorized';
 
       let matchesSearch = true;
       if (activeQuery) {
@@ -143,7 +181,12 @@ export default function NurseWardOverview() {
         const patient = (b.patient_name || '').toLowerCase();
         const doctor = (b.attending_doctor_name || '').toLowerCase();
         const reason = (b.admission_reason || '').toLowerCase();
-        matchesSearch = bedNum.includes(q) || patient.includes(q) || doctor.includes(q) || reason.includes(q);
+        const isDischarged = b.discharge_status === 'Authorized';
+        matchesSearch = bedNum.includes(q) || 
+          patient.includes(q) || 
+          doctor.includes(q) || 
+          reason.includes(q) || 
+          (isDischarged && ('discharge'.includes(q) || 'authorized'.includes(q) || 'release'.includes(q)));
       }
 
       return matchesStatus && matchesSearch;
@@ -178,162 +221,109 @@ export default function NurseWardOverview() {
               )}
             </select>
 
-            <span className="bg-teal-800/90 text-teal-100 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-teal-700/60 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-[#E07856]" /> Shift: {stats?.active_shift || 'Active Shift'}
+            <span className="text-[11px] bg-teal-800/80 text-teal-100 px-2 py-0.5 rounded-full font-medium">
+              Ward #{data?.ward_id || 1}
             </span>
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight">
-            {data ? (
-              <>
-                <span className="text-white">{data.occupied_beds} Occupied</span>
-                <span className="text-teal-300 mx-2">•</span>
-                <span className="text-emerald-300">{data.available_beds} Available</span>
-                {data.cleaning_beds > 0 && (
-                  <>
-                    <span className="text-teal-300 mx-2">•</span>
-                    <span className="text-amber-300">{data.cleaning_beds} Cleaning</span>
-                  </>
-                )}
-              </>
-            ) : (
-              'Loading Ward Census...'
-            )}
+            {data?.ward_name || 'Cardiology Care Ward'}
           </h1>
-
-          <div className="flex items-center gap-3 text-xs text-teal-200">
-            <span>Occupancy Rate: <strong className="text-white">{data?.occupancy_rate ?? 0}%</strong></span>
-            <span>•</span>
-            <span>Total Bed Capacity: <strong className="text-white">{data?.total_beds ?? 10} Beds</strong></span>
-            <span>•</span>
-            <span>Active Census: <strong className="text-white">{data?.beds?.length ?? 0} Beds Mapped</strong></span>
-          </div>
+          <p className="text-xs text-teal-100 max-w-xl">
+            Real-time inpatient telemetry, doctor discharge bed releases, and multi-ward patient bed management.
+          </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2">
-          <Link
-            href="/nurse/handover"
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-[#E07856] hover:bg-[#d06846] text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95"
-          >
-            <UserCheck className="w-4 h-4" /> Shift Handover Protocol
-          </Link>
-          <Link
-            href="/nurse/inventory"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-teal-800 hover:bg-teal-700 text-teal-100 rounded-lg text-xs font-semibold transition-all border border-teal-700 shadow-sm"
-          >
-            <Package className="w-3.5 h-3.5 text-[#E07856]" /> Ward Stock
-          </Link>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => fetchOverview()}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2.5 bg-teal-800/80 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold transition-all border border-teal-700 shadow-sm active:scale-95 disabled:opacity-50"
+            className="bg-white/10 hover:bg-white/20 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 border border-white/20 transition backdrop-blur-xs disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Station
           </button>
         </div>
-
-        <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-teal-800 to-transparent opacity-40 pointer-events-none" />
       </div>
 
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between text-xs font-semibold shadow-sm">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-xl text-xs flex items-center justify-between shadow-2xs animate-in fade-in">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <span>{successMsg}</span>
+            <span className="font-semibold">{successMsg}</span>
           </div>
-          <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-900 text-xs">Dismiss</button>
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-600 hover:text-emerald-900">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {unassignedPatients.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-teal-400 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+        <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-teal-600 text-white flex-shrink-0">
-              <UserPlus className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center flex-shrink-0 font-bold text-sm shadow-xs">
+              {unassignedPatients.length}
             </div>
             <div>
-              <span className="font-bold text-sm text-[#0E4749]">Incoming Inpatients Awaiting Bed Allocation:</span>{' '}
-              <span className="text-xs text-gray-700 font-medium block sm:inline">
-                {unassignedPatients.length} patient(s) admitted to this ward. Assign them to an available bed below.
-              </span>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {unassignedPatients.map(p => (
-                  <span key={p.admission_id} className="text-[11px] bg-white px-2 py-0.5 rounded border border-teal-300 text-gray-800 font-semibold">
-                    {p.patient_name} ({p.admission_reason || 'Admitted'})
-                  </span>
-                ))}
-              </div>
+              <h4 className="font-bold text-xs text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                Inpatient Placement Queue: {unassignedPatients.length} Admitted Patient(s) Waiting For Bed
+              </h4>
+              <p className="text-xs text-amber-900 mt-0.5">
+                Admitted by Receptionist Chavindya. Click &quot;Assign Inpatient&quot; on any available bed below to allocate placement.
+              </p>
             </div>
           </div>
-          <button
-            onClick={() => setFilter('Available')}
-            className="text-xs font-bold bg-[#0E4749] text-white px-3.5 py-2 rounded-lg hover:bg-[#093233] transition shadow flex items-center gap-1.5 flex-shrink-0"
-          >
-            Show Available Beds <ArrowRight className="w-3.5 h-3.5 text-[#E07856]" />
-          </button>
+          <div className="text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-200">
+            Next: {unassignedPatients[0].patient_name} ({unassignedPatients[0].gender})
+          </div>
         </div>
       )}
 
-      {(criticalBedsCount > 0 || (stats && stats.critical_patients_count > 0)) && (
-        <div className="bg-red-50 border-2 border-red-300 p-4 rounded-xl flex items-center justify-between gap-3 text-red-900 shadow-sm animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-red-100 text-red-600 flex-shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-sm text-red-700">EMERGENCY CLINICAL ALERT:</span>{' '}
-              <span className="text-xs text-red-900 font-medium">
-                {criticalBedsCount || stats?.critical_patients_count} patient in this ward recorded critical vitals (SpO2 &lt; 92% or abnormal pulse/BP threshold). Review Bed CCW-106 immediately.
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={() => setFilter('Critical')}
-            className="text-xs font-bold bg-red-600 text-white px-3.5 py-2 rounded-lg hover:bg-red-700 transition shadow flex items-center gap-1.5 flex-shrink-0"
-          >
-            Filter Critical Beds <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Total Beds</div>
+          <div className="text-2xl font-bold text-[#0E4749] mt-1">{data?.total_beds || 10}</div>
+          <div className="text-[10px] text-gray-500 mt-0.5">Physical Capacity</div>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="text-xs font-bold text-[#5B6472] uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Pill className="w-3.5 h-3.5 text-[#0E4749]" /> Medications Due (MAR)
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{stats?.medications_due_count ?? 3} Active Prescriptions</div>
-            <div className="text-[11px] text-[#5B6472] mt-0.5">Scheduled for administration today</div>
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Occupied</div>
+          <div className="text-2xl font-bold text-[#0E4749] mt-1">{data?.occupied_beds || 0}</div>
+          <div className="text-[10px] text-teal-700 font-semibold mt-0.5">
+            {data?.total_beds ? Math.round((data.occupied_beds / data.total_beds) * 100) : 0}% Occupancy
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="text-xs font-bold text-[#5B6472] uppercase tracking-wider mb-1 flex items-center gap-1">
-              <ClipboardList className="w-3.5 h-3.5 text-[#0E4749]" /> Doctor Orders Pending
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{stats?.pending_orders_count ?? 4} Orders Awaiting</div>
-            <div className="text-[11px] text-[#5B6472] mt-0.5">Diet, lab samples, IV fluid adjustments</div>
-          </div>
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Available</div>
+          <div className="text-2xl font-bold text-emerald-600 mt-1">{data?.available_beds || 0}</div>
+          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">Ready for Admission</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="text-xs font-bold text-[#5B6472] uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-[#0E4749]" /> Current Shift Info
-            </div>
-            <div className="text-base font-bold text-gray-900 truncate">{stats?.active_shift || 'Active Shift'}</div>
-            <div className="text-[11px] text-teal-700 font-semibold mt-0.5">Nurse Sarah Connor in charge</div>
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Cleaning</div>
+          <div className="text-2xl font-bold text-amber-600 mt-1">{data?.cleaning_beds || 0}</div>
+          <div className="text-[10px] text-amber-700 font-semibold mt-0.5">Sanitization Pending</div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Discharge Ready</div>
+          <div className="text-2xl font-bold text-[#E07856] mt-1">{dischargeBedsCount}</div>
+          <div className="text-[10px] text-[#E07856] font-semibold mt-0.5">Doctor Approved</div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-2xs">
+          <div className="text-[11px] font-bold text-[#5B6472] uppercase tracking-wider">Critical Alerts</div>
+          <div className={`text-2xl font-bold mt-1 ${criticalBedsCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+            {criticalBedsCount}
           </div>
+          <div className="text-[10px] text-red-600 font-semibold mt-0.5">High Observation</div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-[#DCE3E0] shadow-sm">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-[#5B6472] flex items-center gap-1 mr-1">
-            <Filter className="w-3.5 h-3.5 text-[#0E4749]" /> View:
-          </span>
-
+      <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
           <button
             onClick={() => setFilter('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -377,6 +367,20 @@ export default function NurseWardOverview() {
           >
             Cleaning ({data?.beds?.filter(b => b.bed_status === 'Cleaning').length || 0})
           </button>
+
+          {dischargeBedsCount > 0 && (
+            <button
+              onClick={() => setFilter('Discharge')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                filter === 'Discharge'
+                  ? 'bg-[#E07856] text-white shadow-sm'
+                  : 'bg-orange-50 text-[#E07856] border border-orange-200 hover:bg-orange-100'
+              }`}
+            >
+              <LogOut className="w-3 h-3" />
+              Discharge Ready ({dischargeBedsCount})
+            </button>
+          )}
 
           {criticalBedsCount > 0 && (
             <button
@@ -424,7 +428,7 @@ export default function NurseWardOverview() {
 
       {activeQuery && (
         <div className="flex items-center justify-between text-xs text-[#5B6472] bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-          <span>Found <strong>{filteredBeds.length}</strong> bed(s) matching search <em>"{activeQuery}"</em></span>
+          <span>Found <strong>{filteredBeds.length}</strong> bed(s) matching search <em>&quot;{activeQuery}&quot;</em></span>
           <button onClick={handleClearSearch} className="text-[#0E4749] font-bold underline">Clear Search</button>
         </div>
       )}
@@ -453,6 +457,7 @@ export default function NurseWardOverview() {
               bed={bed}
               onQuickClean={handleQuickClean}
               onOpenAssignModal={handleOpenAssignModal}
+              onReleaseBed={handleOpenReleaseModal}
               cleaningLoading={cleaningBedId === bed.bed_id}
             />
           ))}
@@ -462,7 +467,7 @@ export default function NurseWardOverview() {
       {data && filteredBeds.length === 0 && (
         <div className="bg-white border border-[#DCE3E0] rounded-xl p-12 text-center text-[#5B6472]">
           <Sparkles className="w-8 h-8 text-[#0E4749] mx-auto mb-2 opacity-50" />
-          <p className="font-semibold text-sm">No beds found matching the filter "{filter}".</p>
+          <p className="font-semibold text-sm">No beds found matching the filter &quot;{filter}&quot;.</p>
           {(activeQuery || filter !== 'ALL') && (
             <button
               onClick={() => { handleClearSearch(); setFilter('ALL'); }}
@@ -551,6 +556,85 @@ export default function NurseWardOverview() {
                 className="px-4 py-2 rounded-lg text-xs font-bold bg-[#0E4749] hover:bg-[#093233] text-white transition disabled:opacity-50 shadow flex items-center gap-1.5"
               >
                 {assigningLoading ? 'Allocating Bed...' : `Confirm Placement in ${assignModalBed.bed_number}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {releaseModalBed && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-[#DCE3E0] space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-[#DCE3E0]">
+              <div className="flex items-center gap-2">
+                <LogOut className="w-5 h-5 text-[#E07856]" />
+                <h3 className="font-bold text-base text-[#0E4749]">
+                  Release Bed & Remove Patient
+                </h3>
+              </div>
+              <button
+                onClick={() => setReleaseModalBed(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-orange-50 border border-orange-200 text-orange-900 p-3.5 rounded-xl text-xs space-y-1">
+              <div><strong>Bed:</strong> {releaseModalBed.bed_number}</div>
+              <div><strong>Patient:</strong> {releaseModalBed.patient_name}</div>
+              <div><strong>Doctor:</strong> {releaseModalBed.attending_doctor_name || 'Attending Physician'}</div>
+              <div className="text-[11px] text-orange-800 pt-0.5">
+                Doctor authorized discharge. Releasing this bed removes the patient from Bed {releaseModalBed.bed_number} and sets the bed status to Cleaning.
+              </div>
+            </div>
+
+            <div className="space-y-2.5 bg-gray-50 p-4 rounded-xl border border-gray-200 text-xs">
+              <h5 className="font-bold text-gray-800 uppercase tracking-wider text-[11px]">
+                Mandatory Nursing Checklist:
+              </h5>
+              <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={releaseIvRemoved}
+                  onChange={(e) => setReleaseIvRemoved(e.target.checked)}
+                />
+                <span>IV lines and cannula safely removed; site dressed</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={releaseMedsCounseled}
+                  onChange={(e) => setReleaseMedsCounseled(e.target.checked)}
+                />
+                <span>Prescription medications and instructions counseled</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={releaseSummaryHanded}
+                  onChange={(e) => setReleaseSummaryHanded(e.target.checked)}
+                />
+                <span>Discharge nursing summary document handed over</span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#DCE3E0]">
+              <button
+                type="button"
+                onClick={() => setReleaseModalBed(null)}
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-[#5B6472] hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={releasingLoading || !releaseIvRemoved || !releaseMedsCounseled || !releaseSummaryHanded}
+                onClick={handleConfirmRelease}
+                className="px-5 py-2.5 rounded-lg text-xs font-bold bg-[#E07856] hover:bg-[#d06846] text-white shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                {releasingLoading ? 'Releasing Bed...' : `Release Bed ${releaseModalBed.bed_number} (Set to Cleaning)`}
               </button>
             </div>
           </div>
