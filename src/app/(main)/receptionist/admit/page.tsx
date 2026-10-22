@@ -482,6 +482,7 @@ export default function ReceptionistAdmit() {
           <p className="p-6 text-center text-sm text-[#5B6472]">          No active admissions found.</p>
         )}
       </section>
+
     </div>
   );
 }
