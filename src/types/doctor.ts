@@ -45,4 +45,15 @@ export interface DoctorStat {
 export interface DoctorProfile {
     name: string;
     specialty: string;
-}
+}
+
+export interface DoctorUserAppointment {
+    apt_id: number;
+    patient_id: number;
+    patient_name: string;
+    apt_date: string;
+    appointment_time: string;
+    status: string;
+    day_group: 'Today' | 'Upcoming' | 'Past' | string;
+}
+

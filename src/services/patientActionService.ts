@@ -1,38 +1,135 @@
 import apiClient from '@/lib/apiClient';
 import { MOCK_PATIENT_ACTION_DATA } from '@/lib/patientActionMock';
-import type { Medication, PatientActionData } from '@/types/patientAction';
+import type { AdmissionDetails, AdmissionRequestData, Medication, PatientActionData, WardOption } from '@/types/patientAction';
 import type { DoctorAppointment } from '@/types/doctor';
 
+interface PatientDetailsResponse {
+  patient_id: number;
+  patient_name: string;
+  gender: string | null;
+  age: number | null;
+  dob: string | null;
+  phone: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+}
+
+interface PatientAppointmentDetailsResponse {
+  apt_date: string;
+  apt_time: string;
+  reason: string;
+}
+
+interface AdmissionStatusResponse {
+  is_admitted: boolean;
+  admission: AdmissionDetails | null;
+}
+
+const normalizeGender = (gender: string | null): 'Female' | 'Male' | 'Other' => {
+  if (gender === 'Female' || gender === 'Male') {
+    return gender;
+  }
+  return 'Other';
+};
+
 export const patientActionService = {
-  /**
-   * Fetches patient action details by appointment ID.
-   * If backend endpoint is not ready, returns realistic mock data matching the UI screenshot.
-   */
-  getPatientActionData: async (appointmentId: string): Promise<PatientActionData> => {
+  getAdmissionStatus: async (patientId: number): Promise<AdmissionStatusResponse> => {
+    const response = await apiClient.get<AdmissionStatusResponse>(
+      `/doctor/admission-status/${patientId}`
+    );
+    return response.data;
+  },
+
+  getWardNames: async (): Promise<WardOption[]> => {
+    const response = await apiClient.get<WardOption[]>('/doctor/wards');
+    if (!Array.isArray(response.data)) {
+      throw new Error('The ward response is invalid');
+    }
+    return response.data;
+  },
+
+  createAdmissionRequest: async (data: AdmissionRequestData): Promise<{ message: string; admission_id: number }> => {
     try {
-      // TODO: Connect to backend GET /doctor/patient-action/:appointmentId when endpoint is ready
-      const res = await apiClient.get<PatientActionData>(`/doctor/patient-action/${appointmentId}`);
-      if (res.data && res.data.patient) {
-        return res.data;
-      }
-      return {
-        ...MOCK_PATIENT_ACTION_DATA,
-        appointment: {
-          ...MOCK_PATIENT_ACTION_DATA.appointment,
-          id: appointmentId,
-        },
-      };
-    } catch {
-      // Graceful fallback to mock data for demonstration and offline development
-      return {
-        ...MOCK_PATIENT_ACTION_DATA,
-        appointment: {
-          ...MOCK_PATIENT_ACTION_DATA.appointment,
-          id: appointmentId,
-        },
-      };
+      const response = await apiClient.post<{ message: string; admission_id: number }>(
+        '/doctor/admissions',
+        data
+      );
+      return response.data;
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      throw new Error(detail || 'Failed to save admission request');
     }
   },
+
+  /**
+   * Fetches the appointment first to resolve its patient ID, then loads the
+   * patient card data from the dedicated patient-details endpoint.
+   */
+  getPatientActionData: async (appointmentId: string): Promise<PatientActionData> => {
+    const appointmentResponse = await apiClient.get<{
+      apt_id: number;
+      patient_id: number;
+      doctor_id: number;
+      doctor_name: string;
+      apt_date: string;
+      time_slot: string;
+      dept_name: string;
+      reason?: string;
+      status: string;
+    }>(`/appointments/${appointmentId}`);
+    const appointment = appointmentResponse.data;
+
+    if (!appointment?.patient_id) {
+      throw new Error('The appointment did not include a patient ID');
+    }
+
+    const [patientResponse, appointmentDetailsResponse, admissionStatusResponse] = await Promise.all([
+      apiClient.get<PatientDetailsResponse>(
+        `/doctor/patient-details/${appointment.patient_id}`
+      ),
+      apiClient.get<PatientAppointmentDetailsResponse>(
+        `/doctor/patient-appointment-details/${appointmentId}`
+      ),
+      apiClient.get<AdmissionStatusResponse>(
+        `/doctor/admission-status/${appointment.patient_id}`
+      ),
+    ]);
+    const patient = patientResponse.data;
+    const appointmentDetails = appointmentDetailsResponse.data;
+
+    if (!appointmentDetails?.apt_date || !appointmentDetails?.apt_time || !appointmentDetails?.reason) {
+      throw new Error('The appointment details response is incomplete');
+    }
+
+    return {
+      ...MOCK_PATIENT_ACTION_DATA,
+      patient: {
+        id: String(patient.patient_id),
+        name: patient.patient_name,
+        gender: normalizeGender(patient.gender),
+        age: patient.age ?? 0,
+        dob: patient.dob ?? '',
+        phone: patient.phone ?? '',
+        bloodGroup: patient.blood_group ?? '',
+        allergies: patient.allergies ?? 'None recorded',
+      },
+      appointment: {
+        ...MOCK_PATIENT_ACTION_DATA.appointment,
+        id: String(appointment.apt_id),
+        date: appointmentDetails.apt_date,
+        formattedDate: appointmentDetails.apt_date,
+        timeSlot: appointment.time_slot,
+        time: appointmentDetails.apt_time,
+        reason: appointmentDetails.reason,
+        doctorId: appointment.doctor_id,
+        doctorName: appointment.doctor_name,
+        status: appointment.status.toUpperCase() as PatientActionData['appointment']['status'],
+      },
+      isAdmitted: admissionStatusResponse.data.is_admitted,
+      admission: admissionStatusResponse.data.admission,
+    };
+  },
+
 
   /**
    * Saves or updates clinical notes for an appointment.

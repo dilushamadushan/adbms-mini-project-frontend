@@ -15,24 +15,28 @@ html, body {
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+
   body {
-    background-color: white !important;
+    background: #fff !important;
   }
-  body * {
-    visibility: hidden;
-  }
-  #printable-order-document, #printable-order-document *,
-  #printable-dispensing-report, #printable-dispensing-report * {
-    visibility: visible;
-  }
-  #printable-order-document,
-  #printable-dispensing-report {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100% !important;
-    margin: 0 !important;
+
+  main {
+    min-height: 0 !important;
     padding: 0 !important;
   }
-}
 
+  .bill-template-toolbar {
+    display: none !important;
+  }
+
+  .bill-template {
+    max-width: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}

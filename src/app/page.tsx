@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { User, Lock, Eye, EyeOff, ChevronRight, AlertCircle, Activity, Shield, Zap } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ChevronRight, AlertCircle, Activity, Shield, Zap, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ROUTES } from '@/lib/constants';
 import { Role } from '@/types';
+import { ForgotPasswordModal } from '@/components/features/auth/ForgotPasswordModal';
 
 export default function Login() {
   const router = useRouter();
@@ -16,11 +17,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successNotice, setSuccessNotice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessNotice('');
     setLoading(true);
 
     try {
@@ -114,6 +118,13 @@ export default function Login() {
             <p className="text-[#5B6472] text-sm mt-1">Sign in to access your hospital portal</p>
           </div>
 
+          {successNotice && (
+            <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm rounded-xl flex items-center gap-2.5 animate-fadeIn">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+              <span className="text-xs font-medium">{successNotice}</span>
+            </div>
+          )}
+
           {error && (
             <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-center gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -144,7 +155,14 @@ export default function Login() {
                 <label className="block text-xs font-bold text-[#5B6472] uppercase tracking-wider">
                   Password
                 </label>
-                <button type="button" className="text-xs font-semibold text-[#0E4749] hover:underline">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError('');
+                    setShowForgotPassword(true);
+                  }}
+                  className="text-xs font-semibold text-[#0E4749] hover:underline cursor-pointer"
+                >
                   Forgot?
                 </button>
               </div>
@@ -192,6 +210,19 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        initialEmail={username.includes('@') ? username : ''}
+        onSuccess={(resetEmail) => {
+          if (!username && resetEmail) {
+            setUsername(resetEmail);
+          }
+          setPassword('');
+          setSuccessNotice('Password reset successfully! You can now log in with your new password.');
+        }}
+      />
     </div>
   );
 }
