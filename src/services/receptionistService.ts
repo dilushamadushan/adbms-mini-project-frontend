@@ -78,6 +78,12 @@ export interface AdmissionInput {
   gender: 'Female' | 'Male';
 }
 
+export interface AdmissionGuardianInput {
+  guardian_name: string;
+  guardian_relationship: string;
+  guardian_contact: string;
+}
+
 export interface RecepPatientRecord {
   patient_id: number;
   user_id: number;
@@ -133,6 +139,17 @@ export const receptionistService = {
 
   admitPatient: async (payload: AdmissionInput): Promise<AdmissionRecord> => {
     const response = await apiClient.post<AdmissionRecord>('/receptionist/admissions', payload);
+    return response.data;
+  },
+
+  completeAdmissionGuardian: async (
+    admissionId: number,
+    payload: AdmissionGuardianInput,
+  ): Promise<AdmissionRecord> => {
+    const response = await apiClient.patch<AdmissionRecord>(
+      `/receptionist/admissions/${admissionId}/guardian`,
+      payload,
+    );
     return response.data;
   },
 

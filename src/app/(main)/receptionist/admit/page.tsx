@@ -28,6 +28,12 @@ function calculateAge(dob: string | null | undefined): string {
   return age >= 0 ? String(age) : '—';
 }
 
+function admissionNeedsGuardian(admission: AdmissionRecord): boolean {
+  return !admission.guardian_name?.trim()
+    || !admission.guardian_relationship?.trim()
+    || !admission.guardian_contact?.trim();
+}
+
 export default function ReceptionistAdmit() {
   const [patients, setPatients] = useState<RecepPatientRecord[]>([]);
   const [admittedPatients, setAdmittedPatients] = useState<AdmissionRecord[]>([]);
@@ -66,6 +72,9 @@ export default function ReceptionistAdmit() {
   const selectedActiveAdmission = admittedPatients.find(
     (admission) => admission.patient_id === Number(patientId),
   );
+  const selectedGuardianAdmission = selectedActiveAdmission && admissionNeedsGuardian(selectedActiveAdmission)
+    ? selectedActiveAdmission
+    : null;
   const matchingPatients = useMemo(() => {
     const query = patientQuery.trim().toLocaleLowerCase();
     if (!query) return [];
@@ -122,6 +131,26 @@ export default function ReceptionistAdmit() {
     setPatientId(String(patient.patient_id));
     setPatientQuery(`${patient.first_name} ${patient.last_name}`);
     setShowPatientSuggestions(false);
+    const activeAdmission = admittedPatients.find((admission) => admission.patient_id === patient.patient_id);
+    if (activeAdmission) {
+      setWardId(String(activeAdmission.ward_id));
+      setDoctorId(String(activeAdmission.admitted_doctor_id));
+      setGender(activeAdmission.gender || '');
+      setReason(activeAdmission.admission_reason);
+      setGuardianName(activeAdmission.guardian_name || '');
+      setGuardianRelationship(activeAdmission.guardian_relationship || '');
+      setGuardianContact(activeAdmission.guardian_contact || '');
+    } else {
+      setWardId('');
+      setDoctorId('');
+      setGender('');
+      setReason('');
+      setGuardianName('');
+      setGuardianRelationship('');
+      setGuardianContact('');
+    }
+    setError('');
+    setSuccess('');
   }
 
   async function submitAdmission(event: FormEvent<HTMLFormElement>) {
@@ -133,11 +162,15 @@ export default function ReceptionistAdmit() {
       setError('Select a patient from the name suggestions before submitting.');
       return;
     }
-    if (selectedActiveAdmission) {
-      setError('This patient already has an active admission. Complete their discharge before admitting them again.');
+    if (!guardianName.trim() || !guardianRelationship || !guardianContact.trim()) {
+      setError('Complete all required guardian fields.');
       return;
     }
-    if (!wardId || !doctorId || !gender || !reason.trim() || !guardianName.trim() || !guardianRelationship || !guardianContact.trim()) {
+    if (!selectedGuardianAdmission && selectedActiveAdmission) {
+      setError('This patient already has an active admission.');
+      return;
+    }
+    if (!selectedGuardianAdmission && (!wardId || !doctorId || !gender || !reason.trim())) {
       setError('Complete all required admission and guardian fields.');
       return;
     }
@@ -148,6 +181,32 @@ export default function ReceptionistAdmit() {
 
     setIsSaving(true);
     try {
+      if (selectedGuardianAdmission) {
+        const admission = await receptionistService.completeAdmissionGuardian(
+          selectedGuardianAdmission.admission_id,
+          {
+            guardian_name: guardianName.trim(),
+            guardian_relationship: guardianRelationship,
+            guardian_contact: guardianContact.trim(),
+          },
+        );
+        setAdmittedPatients((current) => current.map((currentAdmission) => (
+          currentAdmission.admission_id === admission.admission_id ? admission : currentAdmission
+        )));
+        setSuccess(`Guardian details saved for ${admission.patient_name}. The existing admission was updated.`);
+        setIsSuccessCooldown(true);
+        setPatientId('');
+        setPatientQuery('');
+        setWardId('');
+        setDoctorId('');
+        setGender('');
+        setReason('');
+        setGuardianName('');
+        setGuardianRelationship('');
+        setGuardianContact('');
+        return;
+      }
+
       const admission = await receptionistService.admitPatient({
         patient_id: Number(patientId),
         ward_id: Number(wardId),
@@ -243,7 +302,7 @@ export default function ReceptionistAdmit() {
         <form onSubmit={submitAdmission} className="min-w-0 space-y-5 rounded-2xl border border-[#DCE3E0] bg-white p-6 shadow-sm md:p-8">
           <div className="border-b border-[#E8EDEA] pb-4">
             <h3 className="text-lg font-bold text-[#0E4749]">Admission details</h3>
-            <p className="mt-1 text-sm text-[#5B6472]">Select a patient by name. Patient details are filled from their record.</p>
+            <p className="mt-1 text-sm text-[#5B6472]">Select a patient by name. Active admissions missing guardian details are listed so you can complete their record.</p>
           </div>
 
           <div className="relative">
@@ -257,6 +316,13 @@ export default function ReceptionistAdmit() {
               onChange={(event) => {
                 setPatientQuery(event.target.value);
                 setPatientId('');
+                setWardId('');
+                setDoctorId('');
+                setGender('');
+                setReason('');
+                setGuardianName('');
+                setGuardianRelationship('');
+                setGuardianContact('');
                 setShowPatientSuggestions(true);
               }}
               placeholder="Patient name"
@@ -264,29 +330,42 @@ export default function ReceptionistAdmit() {
             />
             {showPatientSuggestions && patientQuery.trim() && (
               <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[#DCE3E0] bg-white py-1 shadow-lg">
-                {matchingPatients.length ? matchingPatients.map((patient) => (
-                  <li key={patient.patient_id}>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectPatient(patient)}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50"
-                    >
-                      <span>{patient.first_name} {patient.last_name}</span>
-                      {admittedPatients.some((admission) => admission.patient_id === patient.patient_id) && (
-                        <span className="ml-2 text-xs font-semibold text-amber-700">Already admitted</span>
-                      )}
-                    </button>
-                  </li>
-                )) : <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient. Add them using the form on the right.</li>}
+                {matchingPatients.length ? matchingPatients.map((patient) => {
+                  const activeAdmission = admittedPatients.find(
+                    (admission) => admission.patient_id === patient.patient_id,
+                  );
+                  return (
+                    <li key={patient.patient_id}>
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectPatient(patient)}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50"
+                      >
+                        <span>{patient.first_name} {patient.last_name}</span>
+                        {activeAdmission && (
+                          <span className="ml-2 text-xs font-semibold text-amber-700">
+                            {admissionNeedsGuardian(activeAdmission) ? 'Guardian details required' : 'Already admitted'}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                }) : <li className="px-3 py-2 text-sm text-[#5B6472]">No matching patient. Add them using the form on the right.</li>}
               </ul>
             )}
           </div>
 
-          {selectedActiveAdmission && (
+          {selectedGuardianAdmission && (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              Add guardian details to complete this patient’s admission in {selectedGuardianAdmission.ward_name}
+              {' '}({selectedGuardianAdmission.status}). The existing admission details are filled in below.
+            </p>
+          )}
+          {selectedActiveAdmission && !selectedGuardianAdmission && (
             <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               This patient already has an active admission in {selectedActiveAdmission.ward_name}
-              {' '}({selectedActiveAdmission.status}). Complete their discharge before admitting them again.
+              {' '}({selectedActiveAdmission.status}).
             </p>
           )}
 
@@ -301,19 +380,25 @@ export default function ReceptionistAdmit() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block text-sm font-semibold">Ward
-              <select required value={wardId} onChange={(event) => setWardId(event.target.value)} className={inputClass}>
+              <select required={!selectedActiveAdmission} disabled={Boolean(selectedActiveAdmission)} value={selectedActiveAdmission ? String(selectedActiveAdmission.ward_id) : wardId} onChange={(event) => setWardId(event.target.value)} className={inputClass}>
                 <option value="">Select a ward</option>
+                {selectedActiveAdmission && !wards.some((ward) => ward.ward_id === selectedActiveAdmission.ward_id) && (
+                  <option value={selectedActiveAdmission.ward_id}>{selectedActiveAdmission.ward_name}</option>
+                )}
                 {wards.map((ward) => <option key={ward.ward_id} value={ward.ward_id}>{ward.ward_name}</option>)}
               </select>
             </label>
             <label className="block text-sm font-semibold">Admitting doctor
-              <select required value={doctorId} onChange={(event) => setDoctorId(event.target.value)} className={inputClass}>
+              <select required={!selectedActiveAdmission} disabled={Boolean(selectedActiveAdmission)} value={selectedActiveAdmission ? String(selectedActiveAdmission.admitted_doctor_id) : doctorId} onChange={(event) => setDoctorId(event.target.value)} className={inputClass}>
                 <option value="">Select a doctor</option>
+                {selectedActiveAdmission && !doctors.some((doctor) => doctor.staff_id === selectedActiveAdmission.admitted_doctor_id) && (
+                  <option value={selectedActiveAdmission.admitted_doctor_id}>{selectedActiveAdmission.admitted_doctor_name}</option>
+                )}
                 {doctors.map((doctor) => <option key={doctor.staff_id} value={doctor.staff_id}>Dr. {doctor.first_name} {doctor.last_name}</option>)}
               </select>
             </label>
             <label className="block text-sm font-semibold">Gender
-              <select required value={gender} onChange={(event) => setGender(event.target.value as 'Female' | 'Male' | '')} className={inputClass}>
+              <select required={!selectedActiveAdmission} disabled={Boolean(selectedActiveAdmission)} value={selectedActiveAdmission?.gender || gender} onChange={(event) => setGender(event.target.value as 'Female' | 'Male' | '')} className={inputClass}>
                 <option value="">Select gender</option>
                 <option value="Female">Female</option>
                 <option value="Male">Male</option>
@@ -322,31 +407,31 @@ export default function ReceptionistAdmit() {
           </div>
 
           <label className="block text-sm font-semibold">Admission reason
-            <textarea required minLength={1} maxLength={4000} rows={3} value={reason} onChange={(event) => setReason(event.target.value)} className={inputClass} />
+            <textarea required={!selectedActiveAdmission} readOnly={Boolean(selectedActiveAdmission)} minLength={1} maxLength={4000} rows={3} value={selectedActiveAdmission?.admission_reason ?? reason} onChange={(event) => setReason(event.target.value)} className={inputClass} />
           </label>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block text-sm font-semibold">Guardian name
-              <input required maxLength={200} value={guardianName} onChange={(event) => setGuardianName(event.target.value)} className={inputClass} />
+              <input required maxLength={200} readOnly={Boolean(selectedActiveAdmission && !selectedGuardianAdmission)} value={guardianName} onChange={(event) => setGuardianName(event.target.value)} className={inputClass} />
             </label>
             <label className="block text-sm font-semibold">Guardian relationship
-              <select required value={guardianRelationship} onChange={(event) => setGuardianRelationship(event.target.value)} className={inputClass}>
+              <select required disabled={Boolean(selectedActiveAdmission && !selectedGuardianAdmission)} value={guardianRelationship} onChange={(event) => setGuardianRelationship(event.target.value)} className={inputClass}>
                 <option value="">Select relationship</option>
-                {['Mother', 'Father', 'Spouse', 'Son', 'Daughter', 'Sibling', 'Legal guardian'].map((relationship) => <option key={relationship}>{relationship}</option>)}
+                {['Guardian', 'Mother', 'Father', 'Spouse', 'Son', 'Daughter', 'Sibling', 'Legal guardian'].map((relationship) => <option key={relationship}>{relationship}</option>)}
               </select>
             </label>
             <label className="block text-sm font-semibold">Guardian contact number
-              <input required type="tel" minLength={7} maxLength={20} pattern="[+]?[0-9 () .-]{7,20}" value={guardianContact} onChange={(event) => setGuardianContact(event.target.value)} className={inputClass} />
+              <input required type="tel" minLength={7} maxLength={20} pattern="[+]?[0-9 () .-]{7,20}" readOnly={Boolean(selectedActiveAdmission && !selectedGuardianAdmission)} value={guardianContact} onChange={(event) => setGuardianContact(event.target.value)} className={inputClass} />
             </label>
           </div>
 
-          <p className="text-sm text-[#5B6472]">A nurse will assign a bed in the selected ward after admission.</p>
-          {!wards.length && <p className="text-sm text-amber-700">There are no wards available for admission.</p>}
-          {!doctors.length && <p className="text-sm text-amber-700">There are no active doctors available to select.</p>}
+          {!selectedGuardianAdmission && <p className="text-sm text-[#5B6472]">A nurse will assign a bed in the selected ward after admission.</p>}
+          {!selectedGuardianAdmission && !wards.length && <p className="text-sm text-amber-700">There are no wards available for admission.</p>}
+          {!selectedGuardianAdmission && !doctors.length && <p className="text-sm text-amber-700">There are no active doctors available to select.</p>}
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           {success && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p>}
-          <button disabled={isSaving || isSuccessCooldown || !patientId || Boolean(selectedActiveAdmission) || !wards.length || !doctors.length} className="w-full rounded-lg bg-[#0E4749] p-3.5 font-bold text-white transition-colors hover:bg-[#0a383a] disabled:cursor-not-allowed disabled:opacity-50">
-            {isSaving ? 'Saving admission…' : isSuccessCooldown ? 'Admission recorded' : selectedActiveAdmission ? 'Patient already admitted' : 'Confirm admission'}
+          <button disabled={isSaving || isSuccessCooldown || !patientId || (Boolean(selectedActiveAdmission) && !selectedGuardianAdmission) || (!selectedGuardianAdmission && (!wards.length || !doctors.length))} className="w-full rounded-lg bg-[#0E4749] p-3.5 font-bold text-white transition-colors hover:bg-[#0a383a] disabled:cursor-not-allowed disabled:opacity-50">
+            {isSaving ? 'Saving…' : isSuccessCooldown ? 'Saved' : selectedGuardianAdmission ? 'Save guardian details' : selectedActiveAdmission ? 'Already admitted' : 'Confirm admission'}
           </button>
         </form>
 
