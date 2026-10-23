@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Activity, Thermometer, Heart, Save, ArrowLeft, CheckCircle2, 
@@ -26,9 +26,22 @@ interface ToastAlert {
 export default function NurseBedDetail() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const bedId = params?.id as string;
 
-  const [activeTab, setActiveTab] = useState<ClinicalTab>('vitals');
+  const tabParam = searchParams?.get('tab') as ClinicalTab;
+  const validTabs = ['vitals', 'mar', 'orders', 'notes', 'io', 'discharge'];
+  const [activeTab, setActiveTab] = useState<ClinicalTab>(
+    tabParam && validTabs.includes(tabParam) ? tabParam : 'vitals'
+  );
+
+  useEffect(() => {
+    const currentTab = searchParams?.get('tab') as ClinicalTab;
+    if (currentTab && validTabs.includes(currentTab)) {
+      setActiveTab(currentTab);
+    }
+  }, [searchParams]);
+
   const [bed, setBed] = useState<BedDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,6 +275,11 @@ export default function NurseBedDetail() {
 
   const handleCompleteDischarge = async () => {
     if (!bed?.admission_id) return;
+    const pending = doctorOrders.filter(o => o.status !== 'Done');
+    if (pending.length > 0) {
+      showToast('warning', 'Pending Doctor Orders', `Cannot release bed: There are ${pending.length} pending doctor order(s). Please mark all orders as Done first.`);
+      return;
+    }
     if (!ivRemoved || !medsCounseled || !summaryHanded) {
       showToast('warning', 'Checklist Incomplete', 'Please verify and complete all 3 items on the nursing discharge checklist before releasing the bed.');
       return;
@@ -323,6 +341,7 @@ export default function NurseBedDetail() {
   const isOccupied = bed.bed_status === 'Occupied';
   const isCleaning = bed.bed_status === 'Cleaning';
   const hasAuthorizedDischarge = bed.discharge_status === 'Authorized';
+  const pendingDoctorOrders = doctorOrders.filter(o => o.status !== 'Done');
 
   const currentSpo2 = parseInt(spo2 || '98', 10);
   const currentPulse = parseInt(pulse || '72', 10);
@@ -1241,6 +1260,36 @@ export default function NurseBedDetail() {
                 <strong>Doctor Authorization Status:</strong> Approved by physician. Clinical notes: "{bed.discharge_notes || 'Patient stable for home recovery.'}"
               </div>
 
+              {pendingDoctorOrders.length > 0 ? (
+                <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>Pending Doctor Orders ({pendingDoctorOrders.length}) — Must be Marked Done Before Bed Release</span>
+                  </div>
+                  <div className="space-y-2">
+                    {pendingDoctorOrders.map((order) => (
+                      <div key={order.order_id} className="bg-white p-3 rounded-lg border border-amber-200 flex items-center justify-between gap-3 text-xs">
+                        <div>
+                          <span className="font-bold text-[#0E4749] mr-2">[{order.order_type}]</span>
+                          <span className="text-gray-800">{order.instruction}</span>
+                        </div>
+                        <button
+                          onClick={() => handleUpdateOrderStatus(order.order_id, 'Done')}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-2xs flex-shrink-0 flex items-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Mark Done
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2 text-emerald-800 text-xs font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>All doctor orders marked Done. Pre-discharge orders cleared.</span>
+                </div>
+              )}
+
               <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
                 <h5 className="font-bold text-xs text-gray-800 uppercase tracking-wider">Mandatory Nursing Completion Checklist:</h5>
 
@@ -1275,10 +1324,15 @@ export default function NurseBedDetail() {
               <div className="flex justify-end pt-2">
                 <button
                   onClick={handleCompleteDischarge}
-                  disabled={actionLoading || !ivRemoved || !medsCounseled || !summaryHanded}
+                  disabled={actionLoading || pendingDoctorOrders.length > 0 || !ivRemoved || !medsCounseled || !summaryHanded}
                   className="bg-[#E07856] hover:bg-[#d06846] disabled:opacity-50 text-white px-6 py-2.5 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2"
                 >
-                  <Check className="w-4 h-4" /> {actionLoading ? 'Finalizing Discharge...' : 'Release Bed & Complete Discharge'}
+                  <Check className="w-4 h-4" /> 
+                  {actionLoading 
+                    ? 'Finalizing Discharge...' 
+                    : pendingDoctorOrders.length > 0 
+                    ? `Mark ${pendingDoctorOrders.length} Doctor Order(s) Done First` 
+                    : 'Release Bed & Complete Discharge'}
                 </button>
               </div>
             </div>
@@ -1351,12 +1405,16 @@ export default function NurseBedDetail() {
               </button>
               <button
                 type="button"
-                disabled={actionLoading || !ivRemoved || !medsCounseled || !summaryHanded}
+                disabled={actionLoading || pendingDoctorOrders.length > 0 || !ivRemoved || !medsCounseled || !summaryHanded}
                 onClick={handleCompleteDischarge}
                 className="px-5 py-2.5 rounded-lg text-xs font-bold bg-[#E07856] hover:bg-[#d06846] text-white shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                {actionLoading ? 'Releasing Bed...' : `Release Bed ${bed.bed_number} & Finish`}
+                {actionLoading 
+                  ? 'Releasing Bed...' 
+                  : pendingDoctorOrders.length > 0 
+                  ? `Mark ${pendingDoctorOrders.length} Order(s) Done First` 
+                  : `Release Bed ${bed.bed_number} & Finish`}
               </button>
             </div>
           </div>

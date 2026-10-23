@@ -388,4 +388,20 @@ export const nurseService = {
     const res = await apiClient.get<NurseStaffItem[]>('/nurse/ward-nurses');
     return res.data;
   },
+
+  getWardDoctorOrders: async (): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/nurse/ward-orders');
+    return res.data;
+  },
+
+  getWardMar: async (): Promise<{ prescriptions: any[]; history: any[] }> => {
+    const res = await apiClient.get<{ prescriptions: any[]; history: any[] }>('/nurse/ward-mar');
+    return res.data;
+  },
+
+  getWardNursingNotes: async (): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/nurse/ward-notes');
+    return res.data;
+  },
 };
+
