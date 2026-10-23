@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { patientActionService } from '@/services/patientActionService';
 import type {
   AdmissionTab,
+  AdmissionRequestData,
+  AdmissionDetails,
   AppointmentDetails,
   ClinicalActionType,
   DischargeDisagreeData,
-  HospitalAdmissionData,
   Medication,
   PatientDetails,
   PatientHistoryEntry,
@@ -18,6 +19,8 @@ import type {
 export function usePatientAction(appointmentId: string) {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
+  const [isAdmitted, setIsAdmitted] = useState(false);
+  const [admission, setAdmission] = useState<AdmissionDetails | null>(null);
   const [history, setHistory] = useState<PatientHistoryEntry[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [prescription, setPrescription] = useState<PrescriptionDraft>({
@@ -35,6 +38,7 @@ export function usePatientAction(appointmentId: string) {
   const [isSendingPharmacy, setIsSendingPharmacy] = useState<boolean>(false);
   const [isSubmittingEscalation, setIsSubmittingEscalation] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionNoticeTone, setActionNoticeTone] = useState<'default' | 'success'>('default');
 
   // Load initial data
   useEffect(() => {
@@ -48,6 +52,8 @@ export function usePatientAction(appointmentId: string) {
         if (!active) return;
         setPatient(data.patient);
         setAppointment(data.appointment);
+        setIsAdmitted(data.isAdmitted);
+        setAdmission(data.admission);
         setHistory(data.history || []);
         setNotes(data.initialNotes || '');
         setPrescription({
@@ -148,14 +154,19 @@ export function usePatientAction(appointmentId: string) {
     }
   }, [appointmentId]);
 
-  const submitAdmission = useCallback(async (data: HospitalAdmissionData) => {
+  const submitAdmission = useCallback(async (data: AdmissionRequestData) => {
     if (!appointmentId) return;
     setIsSubmittingEscalation(true);
     try {
-      const res = await patientActionService.submitAdmission(appointmentId, data);
-      setActionNotice(res.message);
-    } catch {
-      setActionNotice('Failed to request inpatient admission');
+      const res = await patientActionService.createAdmissionRequest(data);
+      setIsAdmitted(true);
+      const admissionStatus = await patientActionService.getAdmissionStatus(data.patient_id);
+      setAdmission(admissionStatus.admission);
+      setActionNoticeTone('success');
+      setActionNotice('Admission request saved');
+      return res;
+    } catch (error) {
+      throw error;
     } finally {
       setIsSubmittingEscalation(false);
     }
@@ -166,6 +177,7 @@ export function usePatientAction(appointmentId: string) {
     setIsSubmittingEscalation(true);
     try {
       const res = await patientActionService.submitReferral(appointmentId, data);
+      setActionNoticeTone('default');
       setActionNotice(res.message);
     } catch {
       setActionNotice('Failed to dispatch referral');
@@ -179,6 +191,7 @@ export function usePatientAction(appointmentId: string) {
     setIsSubmittingEscalation(true);
     try {
       const res = await patientActionService.submitDischargeDisagree(appointmentId, data);
+      setActionNoticeTone('default');
       setActionNotice(res.message);
     } catch {
       setActionNotice('Failed to document discharge/refusal');
@@ -201,6 +214,8 @@ export function usePatientAction(appointmentId: string) {
   return {
     patient,
     appointment,
+    isAdmitted,
+    admission,
     history,
     notes,
     updateNotes,
@@ -225,5 +240,6 @@ export function usePatientAction(appointmentId: string) {
     isSendingPharmacy,
     isSubmittingEscalation,
     actionNotice,
+    actionNoticeTone,
   };
 }
