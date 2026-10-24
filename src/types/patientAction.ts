@@ -31,6 +31,12 @@ export interface AdmissionRequestData {
   user_id: number;
 }
 
+export interface DischargeRequestData {
+  admission_id: number;
+  doctor_id: number;
+  notes: string;
+}
+
 export interface WardOption {
   ward_id: number;
   ward_name: string;

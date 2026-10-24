@@ -6,7 +6,6 @@ import { usePatientAction } from '@/hooks/usePatientAction';
 import { PatientActionHeader } from './PatientActionHeader';
 import { PatientInfoCard } from './PatientInfoCard';
 import { AppointmentOverview } from './AppointmentOverview';
-import { ClinicalNotes } from './ClinicalNotes';
 import { PatientHistory } from './PatientHistory';
 import { ClinicalActions } from './ClinicalActions';
 import { PrescriptionPanel } from './prescription/PrescriptionPanel';
@@ -33,18 +32,18 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
     addMedication,
     removeMedication,
     clearMedications,
-    saveNotes,
     sendToPharmacy,
     escalateForAdmission,
     submitAdmission,
     submitReferral,
     submitDischargeDisagree,
+    submitDischarge,
     completeAppointment,
     loading,
     error,
-    isSavingNotes,
     isSendingPharmacy,
     isSubmittingEscalation,
+    isCompletingAppointment,
     actionNotice,
     actionNoticeTone,
   } = usePatientAction(appointmentId);
@@ -96,7 +95,6 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
         {/* Left Column: Overview, Notes, History */}
         <div className="space-y-5">
           <AppointmentOverview appointment={appointment} />
-          <ClinicalNotes notes={notes} onChange={updateNotes} />
           <PatientHistory history={history} />
         </div>
 
@@ -128,8 +126,10 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
               userId={Number(user?.user_id)}
               admissionReason={appointment.reason}
               admission={admission}
+              notes={notes}
+              onNotesChange={updateNotes}
               onAdmissionSubmit={submitAdmission}
-              onDischargeSubmit={submitDischargeDisagree}
+              onDischargeSubmit={submitDischarge}
               onSwitchToPrescription={() => setActiveAction('prescription')}
               isSubmitting={isSubmittingEscalation}
             />
@@ -139,13 +139,13 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
 
       {/* Sticky Bottom Action Footer */}
       <PatientActionFooter
-        onSaveNotes={saveNotes}
         onEscalate={() => {
           setActiveAction('referral');
           escalateForAdmission('Escalated for inpatient admission');
         }}
         onComplete={completeAppointment}
-        isSavingNotes={isSavingNotes}
+        isCompleting={isCompletingAppointment}
+        isCompleted={appointment.status === 'COMPLETED'}
       />
     </div>
   );

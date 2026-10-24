@@ -1,6 +1,6 @@
 import apiClient from '@/lib/apiClient';
 import { MOCK_PATIENT_ACTION_DATA } from '@/lib/patientActionMock';
-import type { AdmissionDetails, AdmissionRequestData, Medication, PatientActionData, WardOption } from '@/types/patientAction';
+import type { AdmissionDetails, AdmissionRequestData, DischargeRequestData, Medication, PatientActionData, WardOption } from '@/types/patientAction';
 import type { DoctorAppointment } from '@/types/doctor';
 
 interface PatientDetailsResponse {
@@ -61,6 +61,16 @@ export const patientActionService = {
     }
   },
 
+  requestDischarge: async (data: DischargeRequestData): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.post<{ message: string }>('/doctor/discharge', data);
+      return response.data;
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      throw new Error(detail || 'Failed to request discharge');
+    }
+  },
+
   /**
    * Fetches the appointment first to resolve its patient ID, then loads the
    * patient card data from the dedicated patient-details endpoint.
@@ -70,7 +80,6 @@ export const patientActionService = {
       apt_id: number;
       patient_id: number;
       doctor_id: number;
-      doctor_name: string;
       apt_date: string;
       time_slot: string;
       dept_name: string;
@@ -184,12 +193,20 @@ export const patientActionService = {
    */
   completeAppointment: async (appointmentId: string): Promise<{ success: boolean; message: string }> => {
     try {
-      // TODO: Connect to backend POST /doctor/patient-action/:appointmentId/complete
-      await apiClient.post(`/doctor/patient-action/${appointmentId}/complete`);
-      return { success: true, message: 'Appointment marked as completed' };
-    } catch {
-      // Mock success for seamless UI demonstration
-      return { success: true, message: 'Appointment marked as completed (Demo mode)' };
+      const appointmentResponse = await apiClient.get<{
+        doctor_id: number;
+      }>(`/appointments/${appointmentId}`);
+      const response = await apiClient.post<{ message: string }>(
+        '/doctor/appointments/complete',
+        {
+          appointment_id: Number(appointmentId),
+          doctor_id: appointmentResponse.data.doctor_id,
+        }
+      );
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      throw new Error(detail || 'Failed to complete appointment');
     }
   },
 
