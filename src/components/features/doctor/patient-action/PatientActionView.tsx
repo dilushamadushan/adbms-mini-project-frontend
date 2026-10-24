@@ -8,6 +8,7 @@ import { PatientInfoCard } from './PatientInfoCard';
 import { AppointmentOverview } from './AppointmentOverview';
 import { ClinicalActions } from './ClinicalActions';
 import { PrescriptionPanel } from './prescription/PrescriptionPanel';
+import { AdmittedPrescriptionPanel } from './prescription/AdmittedPrescriptionPanel';
 import { AdmissionReferralPanel } from './admission/AdmissionReferralPanel';
 import { PatientActionFooter } from './PatientActionFooter';
 
@@ -28,9 +29,11 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
     activeAction,
     setActiveAction,
     addMedication,
+    setPrescriptionDetails,
     removeMedication,
     clearMedications,
     sendToPharmacy,
+    saveAdmittedPrescription,
     escalateForAdmission,
     submitAdmission,
     submitReferral,
@@ -96,14 +99,30 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
             onSelectAction={setActiveAction}
           />
           <div className="lg:col-span-2">
-            <PrescriptionPanel
-              prescription={prescription}
-              onAddMedication={addMedication}
-              onRemoveMedication={removeMedication}
-              onClearAllMedications={clearMedications}
-              onSendToPharmacy={sendToPharmacy}
-              isSending={isSendingPharmacy}
-            />
+            {isAdmitted ? (
+              <AdmittedPrescriptionPanel
+                admission={admission}
+                patientId={Number(patient.id)}
+                appointmentId={Number(appointment.id)}
+                doctorId={appointment.doctorId}
+                onSave={saveAdmittedPrescription}
+              />
+            ) : (
+              <PrescriptionPanel
+                prescription={prescription}
+                onAddMedication={addMedication}
+                onRemoveMedication={removeMedication}
+                onClearAllMedications={clearMedications}
+                onSendToPharmacy={sendToPharmacy}
+                onDiagnosisChange={(value) =>
+                  setPrescriptionDetails({ diagnosis: value })
+                }
+                onClinicalNotesChange={(value) =>
+                  setPrescriptionDetails({ clinicalNotes: value })
+                }
+                isSending={isSendingPharmacy}
+              />
+            )}
           </div>
         </div>
       ) : (
