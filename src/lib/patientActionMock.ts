@@ -27,22 +27,22 @@ export const MOCK_HISTORY: PatientHistoryEntry[] = [
 export const MOCK_INITIAL_MEDICATIONS: Medication[] = [
   {
     id: 'med-1',
+    medicineId: 0,
     medicine: 'Paracetamol',
+    genericName: 'Paracetamol',
     dose: '500 mg',
-    route: 'Oral',
     frequency: 'Every 6 hours',
     duration: '3 days',
-    timeSlots: 'Morning & Afternoon',
     instructions: 'Take with food',
   },
   {
     id: 'med-2',
+    medicineId: 0,
     medicine: 'Amoxicillin',
+    genericName: 'Amoxicillin',
     dose: '500 mg',
-    route: 'Oral',
     frequency: 'Every 8 hours',
     duration: '5 days',
-    timeSlots: 'Morning & Evening',
     instructions: 'Complete the course',
   },
 ];
@@ -80,16 +80,13 @@ export const MOCK_PATIENT_ACTION_DATA: PatientActionData = {
  */
 export function generatePrescriptionNotes(medications: Medication[]): string[] {
   return medications.map((med) => {
-    const route = med.route ? med.route.toLowerCase() : 'oral';
     const freq = med.frequency ? med.frequency.toLowerCase() : 'as directed';
     const dur = med.duration ? med.duration.toLowerCase() : '';
-    const slots = med.timeSlots ? med.timeSlots.toLowerCase() : '';
 
-    const parts = [route, freq];
+    const parts = [freq];
     if (dur) parts.push(`for ${dur}`);
     const firstPart = parts.join(', ');
-    const slotPart = slots ? `; ${slots}` : '';
 
-    return `${med.medicine} ${med.dose} — ${firstPart}${slotPart}.`;
+    return `${med.medicine} ${med.dose} — ${firstPart}.`;
   });
 }

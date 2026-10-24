@@ -6,9 +6,9 @@ import { usePatientAction } from '@/hooks/usePatientAction';
 import { PatientActionHeader } from './PatientActionHeader';
 import { PatientInfoCard } from './PatientInfoCard';
 import { AppointmentOverview } from './AppointmentOverview';
-import { PatientHistory } from './PatientHistory';
 import { ClinicalActions } from './ClinicalActions';
 import { PrescriptionPanel } from './prescription/PrescriptionPanel';
+import { AdmittedPrescriptionPanel } from './prescription/AdmittedPrescriptionPanel';
 import { AdmissionReferralPanel } from './admission/AdmissionReferralPanel';
 import { PatientActionFooter } from './PatientActionFooter';
 
@@ -23,16 +23,17 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
     appointment,
     isAdmitted,
     admission,
-    history,
     notes,
     updateNotes,
     prescription,
     activeAction,
     setActiveAction,
     addMedication,
+    setPrescriptionDetails,
     removeMedication,
     clearMedications,
     sendToPharmacy,
+    saveAdmittedPrescription,
     escalateForAdmission,
     submitAdmission,
     submitReferral,
@@ -90,31 +91,48 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
       {/* Patient Information Card */}
       <PatientInfoCard patient={patient} />
 
-      {/* Two Column Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
-        {/* Left Column: Overview, Notes, History */}
-        <div className="space-y-5">
+      {activeAction === 'prescription' ? (
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <AppointmentOverview appointment={appointment} />
-          <PatientHistory history={history} />
-        </div>
-
-        {/* Right Column: Clinical Actions and Swappable Panel */}
-        <div className="space-y-5">
           <ClinicalActions
             activeAction={activeAction}
             onSelectAction={setActiveAction}
           />
-
-          {activeAction === 'prescription' ? (
-            <PrescriptionPanel
-              prescription={prescription}
-              onAddMedication={addMedication}
-              onRemoveMedication={removeMedication}
-              onClearAllMedications={clearMedications}
-              onSendToPharmacy={sendToPharmacy}
-              isSending={isSendingPharmacy}
+          <div className="lg:col-span-2">
+            {isAdmitted ? (
+              <AdmittedPrescriptionPanel
+                admission={admission}
+                patientId={Number(patient.id)}
+                appointmentId={Number(appointment.id)}
+                doctorId={appointment.doctorId}
+                onSave={saveAdmittedPrescription}
+              />
+            ) : (
+              <PrescriptionPanel
+                prescription={prescription}
+                onAddMedication={addMedication}
+                onRemoveMedication={removeMedication}
+                onClearAllMedications={clearMedications}
+                onSendToPharmacy={sendToPharmacy}
+                onDiagnosisChange={(value) =>
+                  setPrescriptionDetails({ diagnosis: value })
+                }
+                onClinicalNotesChange={(value) =>
+                  setPrescriptionDetails({ clinicalNotes: value })
+                }
+                isSending={isSendingPharmacy}
+              />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(240px,0.75fr)_minmax(0,1.25fr)]">
+          <AppointmentOverview appointment={appointment} />
+          <div className="space-y-5">
+            <ClinicalActions
+              activeAction={activeAction}
+              onSelectAction={setActiveAction}
             />
-          ) : (
             <AdmissionReferralPanel
               initialTab={isAdmitted ? 'discharge' : 'admit'}
               isAdmitted={isAdmitted}
@@ -133,9 +151,9 @@ export function PatientActionView({ appointmentId }: PatientActionViewProps) {
               onSwitchToPrescription={() => setActiveAction('prescription')}
               isSubmitting={isSubmittingEscalation}
             />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sticky Bottom Action Footer */}
       <PatientActionFooter
