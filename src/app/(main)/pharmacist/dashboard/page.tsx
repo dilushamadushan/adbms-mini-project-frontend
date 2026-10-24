@@ -132,6 +132,10 @@ export default function PharmacistDashboard() {
 
   const hasUrgentAlerts = kpis && (Number(kpis.low_stock_count) > 0 || Number(kpis.expired_count) > 0);
 
+  // User clean display name (e.g. 'pharmacist.alex' -> 'Alex')
+  const rawName = user?.username ? user.username.split('.').pop() || user.username : 'Alex';
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -148,7 +152,7 @@ export default function PharmacistDashboard() {
             )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {user?.username || 'Pharmacist Alex'}
+            Welcome back, {displayName}
           </h1>
           <p className="text-teal-100 text-sm mt-1">
             Doctor prescription intake, automated inventory deduction, and stock controls.
@@ -384,7 +388,7 @@ export default function PharmacistDashboard() {
                       {inStock ? (
                         <div className="font-semibold text-emerald-700 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{rx.stock_qty} in stock (Free Issue)</span>
+                          <span>{rx.stock_qty} in stock</span>
                         </div>
                       ) : (
                         <div className="font-semibold text-red-600 flex items-center gap-1">
