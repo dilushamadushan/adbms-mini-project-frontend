@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   History, Search, RefreshCw, Loader2, Pill, User, Stethoscope,
-  Calendar, CheckCircle2, Coins, TrendingUp
+  Calendar, CheckCircle2
 } from 'lucide-react';
 import { pharmacyService, DispensationHistoryRecord } from '@/services/pharmacyService';
 
@@ -64,7 +64,7 @@ export default function PharmacistHistory() {
       </div>
 
       {/* Highlights Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm">
           <div className="flex items-center justify-between text-xs text-[#5B6472] mb-1">
             <span>Total Dispensations</span>
@@ -81,17 +81,6 @@ export default function PharmacistHistory() {
           </div>
           <div className="text-2xl font-bold text-[#0E4749]">{totalUnits} units</div>
           <div className="text-[11px] text-gray-400 mt-0.5">Deducted from pharmacy inventory</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-[#DCE3E0] shadow-sm">
-          <div className="flex items-center justify-between text-xs text-[#5B6472] mb-1">
-            <span>Total Realized Revenue</span>
-            <Coins className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-700">
-            Rs. {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-[11px] text-gray-400 mt-0.5">Credited to hospital formulary</div>
         </div>
       </div>
 
@@ -175,7 +164,7 @@ export default function PharmacistHistory() {
                       {item.quantity} units
                     </td>
                     <td className="py-3 px-3 text-right text-gray-600">
-                      Rs. {Number(item.unit_price_at_sale).toFixed(2)}
+                      Rs. {Math.round(Number(item.unit_price_at_sale))}
                     </td>
                     <td className="py-3 px-4 text-right font-black text-[#0E4749]">
                       Rs. {Number(item.total_revenue).toFixed(2)}

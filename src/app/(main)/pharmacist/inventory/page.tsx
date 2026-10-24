@@ -60,16 +60,17 @@ export default function PharmacistInventory() {
   const [medName, setMedName] = useState('');
   const [genericName, setGenericName] = useState('');
   const [unitPrice, setUnitPrice] = useState<number>(0);
-  const [stockQty, setStockQty] = useState<number>(0);
   const [reorderLevel, setReorderLevel] = useState<number>(20);
+  const [stockQty, setStockQty] = useState<number>(50);
   const [expiryDate, setExpiryDate] = useState('');
 
   // Receive Stock Form fields
   const [receiveQty, setReceiveQty] = useState<number>(50);
   const [receiveExpiry, setReceiveExpiry] = useState('');
 
-  // Minimum 1 day lead time date string (YYYY-MM-DD)
-  const tomorrowDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Minimum 3 business days lead time date string (YYYY-MM-DD)
+  const minLeadTimeDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -107,9 +108,9 @@ export default function PharmacistInventory() {
     setMedName('');
     setGenericName('');
     setUnitPrice(25);
-    setStockQty(50);
     setReorderLevel(20);
-    setExpiryDate(new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    setStockQty(50);
+    setExpiryDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     setIsAddEditOpen(true);
   };
 
@@ -119,8 +120,8 @@ export default function PharmacistInventory() {
     setMedName(med.med_name);
     setGenericName(med.generic_name || '');
     setUnitPrice(Number(med.unit_price));
-    setStockQty(med.stock_qty);
     setReorderLevel(med.reorder_level);
+    setStockQty(med.stock_qty);
     setExpiryDate(med.expiry_date ? med.expiry_date.slice(0, 10) : '');
     setIsAddEditOpen(true);
   };
@@ -199,6 +200,10 @@ export default function PharmacistInventory() {
   // Submit Add or Edit Medicine
   const handleSubmitMedicine = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (expiryDate && expiryDate < todayStr) {
+      setError('Batch Expiry Date cannot be a past date. Please select a valid future date.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -207,9 +212,9 @@ export default function PharmacistInventory() {
           med_name: medName,
           generic_name: genericName || undefined,
           unit_price: Number(unitPrice),
-          stock_qty: Number(stockQty),
           reorder_level: Number(reorderLevel),
-          expiry_date: expiryDate
+          stock_qty: Number(stockQty),
+          expiry_date: expiryDate || undefined
         });
         setActionSuccess(`Updated ${medName} successfully!`);
       } else {
@@ -217,11 +222,11 @@ export default function PharmacistInventory() {
           med_name: medName,
           generic_name: genericName || undefined,
           unit_price: Number(unitPrice),
-          stock_qty: Number(stockQty),
           reorder_level: Number(reorderLevel),
-          expiry_date: expiryDate
+          stock_qty: Number(stockQty) || 0,
+          expiry_date: expiryDate || undefined
         });
-        setActionSuccess(`Registered ${medName} to inventory!`);
+        setActionSuccess(`Registered ${medName} with ${stockQty || 0} units stock!`);
       }
       setIsAddEditOpen(false);
       loadData();
@@ -237,6 +242,10 @@ export default function PharmacistInventory() {
   const handleSubmitReceiveStock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrderedItem) return;
+    if (receiveExpiry && receiveExpiry < todayStr) {
+      setError('Batch Expiry Date cannot be a past date. Please select a valid future date.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -248,9 +257,8 @@ export default function PharmacistInventory() {
         received_by: staffId
       });
 
-      // If the parent order only had 1 item, mark the order as RECEIVED
-      const parentOrder = ordersList.find(o => o.order_id === selectedOrderedItem.order_id);
-      if (parentOrder && (!parentOrder.items || parentOrder.items.length <= 1)) {
+      // Mark the parent purchase order as RECEIVED upon confirmation
+      if (selectedOrderedItem.order_id) {
         await pharmacyService.updateOrderStatus(selectedOrderedItem.order_id, 'RECEIVED').catch(() => {});
       }
 
@@ -293,9 +301,9 @@ export default function PharmacistInventory() {
     e.preventDefault();
     if (!selectedMedForOrder) return;
 
-    // Validate min 1 day lead time
-    if (expectedDeliveryDate < tomorrowDate) {
-      setError('Restock lead time requires minimum 1 day in advance. Expected delivery cannot be today.');
+    // Validate min 3 business days lead time
+    if (expectedDeliveryDate < minLeadTimeDate) {
+      setError('Restock lead time requires minimum 3 business days in advance.');
       return;
     }
 
@@ -506,6 +514,7 @@ export default function PharmacistInventory() {
                 {medicines.map((med) => {
                   const isLow = med.stock_qty <= med.reorder_level;
                   const days = med.days_to_expiry ?? 999;
+                  const pendingRestockItem = pendingOrderedItems.find(i => i.medicine_id === med.medicine_id);
                   return (
                     <tr key={med.medicine_id} className="hover:bg-[#F8FDFD] transition">
                       <td className="py-3 px-4">
@@ -521,7 +530,7 @@ export default function PharmacistInventory() {
                         </div>
                       </td>
                       <td className="py-3 px-4 font-medium text-gray-800">
-                        Rs. {Number(med.unit_price).toFixed(2)}
+                        Rs. {Math.round(Number(med.unit_price))}
                       </td>
                       <td className="py-3 px-4">
                         <div className="text-gray-700">{med.expiry_date ? med.expiry_date.slice(0, 10) : '—'}</div>
@@ -570,14 +579,16 @@ export default function PharmacistInventory() {
                           >
                             <ShoppingCart className="w-4 h-4" />
                           </button>
-                          {/* Receive Stock Button */}
-                          <button
-                            onClick={() => handleOpenReceiveStock(med)}
-                            className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
-                            title="Direct Restock (Receive)"
-                          >
-                            <ArrowDownToLine className="w-4 h-4" />
-                          </button>
+                          {/* Receive Stock Button - Only shown when restock is pending/ordered */}
+                          {pendingRestockItem && (
+                            <button
+                              onClick={() => handleOpenReceiveStock(med)}
+                              className="p-1.5 text-emerald-700 hover:bg-emerald-100 bg-emerald-50 rounded-lg transition"
+                              title={`Receive Arrived Restock (${pendingRestockItem.requested_quantity} units - PO: ${pendingRestockItem.order_number})`}
+                            >
+                              <ArrowDownToLine className="w-4 h-4" />
+                            </button>
+                          )}
                           {/* Edit Details Button */}
                           <button
                             onClick={() => handleOpenEdit(med)}
@@ -649,7 +660,7 @@ export default function PharmacistInventory() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Unit Price Estimate</label>
                   <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 font-semibold">
-                    Rs. {Number(selectedMedForOrder.unit_price).toFixed(2)}
+                    Rs. {Math.round(Number(selectedMedForOrder.unit_price))}
                   </div>
                 </div>
               </div>
@@ -658,19 +669,19 @@ export default function PharmacistInventory() {
               <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
                   <Clock className="w-4 h-4 text-amber-700" />
-                  Restock Lead Time: Minimum 1 Business Day
+                  Restock Lead Time: Minimum 3 Business Days
                 </div>
                 <p className="text-[11px] text-amber-800">
-                  Due to procurement logistics and supplier dispatch verification, delivery requires at least 24 hours.
+                  Due to procurement logistics and supplier dispatch verification, delivery requires at least 3 business days.
                 </p>
                 <div>
                   <label className="block text-xs font-semibold text-amber-900 mb-1">
-                    Expected Delivery Date (Min. Tomorrow) *
+                    Expected Delivery Date (Min. 3 Business Days) *
                   </label>
                   <input
                     type="date"
                     required
-                    min={tomorrowDate}
+                    min={minLeadTimeDate}
                     value={expectedDeliveryDate}
                     onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                     className="w-full px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
@@ -703,7 +714,7 @@ export default function PharmacistInventory() {
               <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-xs font-medium text-gray-700">
                 <span>Estimated Requisition Cost:</span>
                 <span className="font-bold text-base text-[#0E4749]">
-                  Rs. {(Number(selectedMedForOrder.unit_price) * (orderQuantity || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  Rs. {Math.round(Number(selectedMedForOrder.unit_price) * (orderQuantity || 0)).toLocaleString()}
                 </span>
               </div>
 
@@ -829,7 +840,7 @@ export default function PharmacistInventory() {
               {editingMed ? 'Edit Medication' : 'Register New Medication'}
             </h2>
             <p className="text-xs text-gray-500 mb-4">
-              Enter pricing, batch information, and reorder threshold.
+              Enter medicine name, pricing, and reorder threshold.
             </p>
 
             <form onSubmit={handleSubmitMedicine} className="space-y-4">
@@ -861,11 +872,11 @@ export default function PharmacistInventory() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">Unit Price (Rs.) *</label>
                   <input
                     type="number"
-                    step="0.01"
-                    min="0.01"
+                    step="1"
+                    min="1"
                     required
                     value={unitPrice}
-                    onChange={(e) => setUnitPrice(parseFloat(e.target.value))}
+                    onChange={(e) => setUnitPrice(Math.round(parseFloat(e.target.value) || 0))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
                   />
                 </div>
@@ -884,21 +895,22 @@ export default function PharmacistInventory() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Current Stock *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Current Stock (Units) *</label>
                   <input
                     type="number"
                     min="0"
                     required
                     value={stockQty}
-                    onChange={(e) => setStockQty(parseInt(e.target.value))}
+                    onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                    placeholder="e.g. 50"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Batch Expiry *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Batch Expiry Date (Optional)</label>
                   <input
                     type="date"
-                    required
+                    min={todayStr}
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
@@ -1043,6 +1055,7 @@ export default function PharmacistInventory() {
                       <input
                         type="date"
                         required
+                        min={todayStr}
                         value={receiveExpiry}
                         onChange={(e) => setReceiveExpiry(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
