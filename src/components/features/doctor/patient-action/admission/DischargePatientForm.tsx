@@ -1,58 +1,60 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Calendar, Clock, Plus, Info, Check, Trash2 } from 'lucide-react';
-
-interface DischargeData {
-  dischargeDate: string;
-  dischargeTime: string;
-  finalDiagnosis: string;
-  conditionAtDischarge: string;
-  dischargeSummary: string;
-  followUpInstructions: string;
-  medications: string[];
-}
+import { Check, FileText, User } from 'lucide-react';
+import { toast } from 'sonner';
+import type { DischargeRequestData } from '@/types/patientAction';
 
 interface DischargePatientFormProps {
-  onConfirmDischarge: (data: DischargeData) => void;
+  admissionId: number;
+  doctorId: number;
+  doctorName: string;
+  notes: string;
+  onNotesChange: (value: string) => void;
+  onConfirmDischarge: (data: DischargeRequestData) => Promise<void>;
   onCancel?: () => void;
   isSubmitting?: boolean;
 }
 
 export function DischargePatientForm({
+  admissionId,
+  doctorId,
+  doctorName,
+  notes,
+  onNotesChange,
   onConfirmDischarge,
   onCancel,
   isSubmitting = false,
 }: DischargePatientFormProps) {
-  const [dischargeDate, setDischargeDate] = useState('26 Oct 2026');
-  const [dischargeTime, setDischargeTime] = useState('02:00 PM');
-  const [finalDiagnosis, setFinalDiagnosis] = useState('');
-  const [conditionAtDischarge, setConditionAtDischarge] = useState('Stable');
-  const [dischargeSummary, setDischargeSummary] = useState('');
-  const [followUpInstructions, setFollowUpInstructions] = useState('');
-  const [dischargeMeds, setDischargeMeds] = useState<string[]>([]);
-  const [newMedInput, setNewMedInput] = useState('');
-  const [showAddMed, setShowAddMed] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleAddMed = () => {
-    if (newMedInput.trim()) {
-      setDischargeMeds([...dischargeMeds, newMedInput.trim()]);
-      setNewMedInput('');
-      setShowAddMed(false);
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    if (!admissionId || !doctorId || !notes.trim()) {
+      const message = 'Discharge notes are required before confirmation.';
+      setFormError(message);
+      toast.error(message);
+      return;
     }
+    setShowConfirmation(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onConfirmDischarge({
-      dischargeDate,
-      dischargeTime,
-      finalDiagnosis: finalDiagnosis || 'Acute gastroenteritis - resolved',
-      conditionAtDischarge,
-      dischargeSummary,
-      followUpInstructions,
-      medications: dischargeMeds,
-    });
+  const confirmDischarge = async () => {
+    setShowConfirmation(false);
+    try {
+      await onConfirmDischarge({
+        admission_id: admissionId,
+        doctor_id: doctorId,
+        notes: notes.trim(),
+      });
+      toast.success('Discharge request submitted successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to request discharge';
+      setFormError(message);
+      toast.error(message);
+    }
   };
 
   return (
@@ -62,147 +64,75 @@ export function DischargePatientForm({
         <span>Discharge Patient</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Left Column */}
-        <div className="space-y-3">
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Discharge Date &amp; Time</label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="relative">
-                <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-500" />
-                <input
-                  type="text"
-                  value={dischargeDate}
-                  onChange={(e) => setDischargeDate(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 py-1.5 pl-8 pr-2 bg-white focus:outline-none focus:border-[#0E4749]"
-                />
-              </div>
-              <div className="relative">
-                <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-500" />
-                <input
-                  type="text"
-                  value={dischargeTime}
-                  onChange={(e) => setDischargeTime(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 py-1.5 pl-8 pr-2 bg-white focus:outline-none focus:border-[#0E4749]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Condition at Discharge</label>
-            <select
-              value={conditionAtDischarge}
-              onChange={(e) => setConditionAtDischarge(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 py-1.5 px-2.5 bg-white focus:outline-none focus:border-[#0E4749]"
-            >
-              <option value="Stable">Stable</option>
-              <option value="Recovered">Recovered</option>
-              <option value="Improved">Improved</option>
-              <option value="DAMA / Disagree with Admission">DAMA / Disagree with Admission</option>
-              <option value="Guarded">Guarded</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Discharge Medications</label>
-            <button
-              type="button"
-              onClick={() => setShowAddMed((p) => !p)}
-              className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700 shadow-sm"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Medication
-            </button>
-            {showAddMed && (
-              <div className="flex gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newMedInput}
-                  onChange={(e) => setNewMedInput(e.target.value)}
-                  placeholder="e.g. Paracetamol 500mg"
-                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1 focus:outline-none focus:border-[#0E4749]"
-                />
-                <button type="button" onClick={handleAddMed} className="rounded-lg bg-[#0E4749] px-3 py-1 font-bold text-white">Add</button>
-              </div>
-            )}
-            <div className="pt-1.5 text-slate-400">
-              {dischargeMeds.length === 0 ? 'No medications added yet' : (
-                <ul className="divide-y divide-slate-100 border rounded-lg p-1.5 bg-slate-50/50">
-                  {dischargeMeds.map((m, i) => (
-                    <li key={i} className="flex justify-between py-1 text-slate-700">
-                      <span>{m}</span>
-                      <button type="button" onClick={() => setDischargeMeds(dischargeMeds.filter((_, idx) => idx !== i))} className="text-red-500">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="space-y-3">
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Final Diagnosis</label>
-            <input
-              type="text"
-              value={finalDiagnosis}
-              onChange={(e) => setFinalDiagnosis(e.target.value)}
-              placeholder="Enter final diagnosis"
-              className="w-full rounded-lg border border-slate-200 py-1.5 px-2.5 bg-white focus:outline-none focus:border-[#0E4749]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Discharge Summary</label>
-            <textarea
-              rows={2}
-              value={dischargeSummary}
-              onChange={(e) => setDischargeSummary(e.target.value)}
-              placeholder="Enter treatment and discharge summary..."
-              className="w-full rounded-lg border border-slate-200 p-2 bg-white focus:outline-none focus:border-[#0E4749]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">Follow-up Instructions</label>
-            <textarea
-              rows={2}
-              value={followUpInstructions}
-              onChange={(e) => setFollowUpInstructions(e.target.value)}
-              placeholder="Enter follow-up instructions..."
-              className="w-full rounded-lg border border-slate-200 p-2 bg-white focus:outline-none focus:border-[#0E4749]"
-            />
-          </div>
+      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+        <label className="mb-1 block font-semibold text-slate-700">Authorizing Doctor</label>
+        <div className="relative">
+          <User className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#0E4749]" />
+          <input
+            type="text"
+            value={doctorName}
+            readOnly
+            className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-2.5 text-xs font-semibold text-slate-800 focus:outline-none"
+          />
         </div>
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg bg-sky-50 border border-sky-100 p-3 text-slate-700">
-        <Info className="h-4 w-4 text-sky-600 flex-shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold text-sky-900">Discharge Summary</span>
-          <p className="text-slate-600 text-[11px] leading-relaxed mt-0.5">
-            After confirming the discharge, the patient&apos;s status will be updated to Discharged and the admission record will be preserved for future visits and medical history.
-          </p>
-        </div>
+      <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+        <label className="mb-2 block text-sm font-bold text-slate-800">Discharge Notes</label>
+        <textarea
+          rows={7}
+          value={notes}
+          onChange={(event) => onNotesChange(event.target.value.slice(0, 1000))}
+          placeholder="Enter discharge instructions or clinical notes..."
+          className="w-full resize-y rounded-lg border border-blue-200 bg-white p-3 text-sm text-slate-900 focus:border-[#0E4749] focus:outline-none"
+          required
+        />
+        <div className="pt-1.5 text-right text-[11px] text-slate-500">{notes.length}/1000</div>
       </div>
+
+      {formError && <p className="font-medium text-red-600">{formError}</p>}
 
       <div className="flex justify-end gap-2.5 pt-1">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 font-semibold text-slate-600 hover:bg-slate-50">
+          <button type="button" onClick={onCancel} className="rounded-lg border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50">
             Cancel
           </button>
         )}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0E4749] px-4 py-1.5 font-bold text-white hover:bg-teal-900 shadow-sm disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0E4749] px-4 py-2 font-bold text-white shadow-sm hover:bg-teal-900 disabled:opacity-50"
         >
-          <Check className="h-3.5 w-3.5" /> {isSubmitting ? 'Confirming…' : 'Confirm Discharge'}
+          <Check className="h-3.5 w-3.5" />
+          {isSubmitting ? 'Saving...' : 'Confirm Discharge'}
         </button>
       </div>
+
+      {showConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-[2px]">
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Confirm Patient Discharge</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Are you sure you want to submit this discharge request?
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setShowConfirmation(false)} className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="button" onClick={confirmDischarge} disabled={isSubmitting} className="rounded-lg bg-[#0E4749] px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-900 disabled:opacity-50">
+                {isSubmitting ? 'Saving...' : 'Confirm Discharge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

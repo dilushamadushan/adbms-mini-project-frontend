@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { patientActionService } from '@/services/patientActionService';
 import type {
   AdmissionTab,
@@ -14,6 +15,7 @@ import type {
   PatientHistoryEntry,
   PrescriptionDraft,
   UrgentReferralData,
+  DischargeRequestData,
 } from '@/types/patientAction';
 
 export function usePatientAction(appointmentId: string) {
@@ -37,6 +39,7 @@ export function usePatientAction(appointmentId: string) {
   const [isSavingNotes, setIsSavingNotes] = useState<boolean>(false);
   const [isSendingPharmacy, setIsSendingPharmacy] = useState<boolean>(false);
   const [isSubmittingEscalation, setIsSubmittingEscalation] = useState<boolean>(false);
+  const [isCompletingAppointment, setIsCompletingAppointment] = useState<boolean>(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionNoticeTone, setActionNoticeTone] = useState<'default' | 'success'>('default');
 
@@ -200,14 +203,34 @@ export function usePatientAction(appointmentId: string) {
     }
   }, [appointmentId]);
 
+  const submitDischarge = useCallback(async (data: DischargeRequestData) => {
+    setIsSubmittingEscalation(true);
+    try {
+      const result = await patientActionService.requestDischarge(data);
+      setIsAdmitted(false);
+      setActionNoticeTone('success');
+      setActionNotice('Discharge request submitted successfully');
+      return result;
+    } finally {
+      setIsSubmittingEscalation(false);
+    }
+  }, []);
+
   const completeAppointment = useCallback(async () => {
     if (!appointmentId) return;
+    setIsCompletingAppointment(true);
     try {
       const res = await patientActionService.completeAppointment(appointmentId);
       setAppointment((prev) => (prev ? { ...prev, status: 'COMPLETED' } : null));
-      setActionNotice(res.message);
-    } catch {
-      setActionNotice('Failed to complete appointment');
+      toast.success('Appointment completed', {
+        description: res.message,
+      });
+    } catch (error) {
+      toast.error('Could not complete appointment', {
+        description: error instanceof Error ? error.message : 'Failed to complete appointment',
+      });
+    } finally {
+      setIsCompletingAppointment(false);
     }
   }, [appointmentId]);
 
@@ -233,12 +256,14 @@ export function usePatientAction(appointmentId: string) {
     submitAdmission,
     submitReferral,
     submitDischargeDisagree,
+    submitDischarge,
     completeAppointment,
     loading,
     error,
     isSavingNotes,
     isSendingPharmacy,
     isSubmittingEscalation,
+    isCompletingAppointment,
     actionNotice,
     actionNoticeTone,
   };
