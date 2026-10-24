@@ -2,6 +2,12 @@ import apiClient from '@/lib/apiClient';
 import { calcAge, formatTime } from '@/lib/dateUtils';
 import type { ApiAppointment, AppointmentStatus, DoctorAppointment, DoctorUserAppointment } from '@/types/doctor';
 
+export interface DoctorMedicine {
+    medicine_id: number;
+    med_name: string;
+    generic_name: string | null;
+}
+
 const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'COMPLETED',
     scheduled: 'SCHEDULED',
@@ -69,4 +75,9 @@ export const doctorService = {
         const res = await apiClient.get<DoctorUserAppointment[]>(`/doctor/appointments-by-user/${userId}`);
         return res.data || [];
     },
-};
+
+    getMedicines: async (): Promise<DoctorMedicine[]> => {
+        const res = await apiClient.get<DoctorMedicine[]>('/doctor/medicines');
+        return res.data || [];
+    },
+};

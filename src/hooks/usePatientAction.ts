@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { patientActionService } from '@/services/patientActionService';
+import { patientActionService, type AdmittedPrescriptionPayload } from '@/services/patientActionService';
+import { toPrescriptionMedicine, validatePrescription } from '@/lib/prescriptionValidation';
 import type {
   AdmissionTab,
   AdmissionRequestData,
@@ -28,6 +29,8 @@ export function usePatientAction(appointmentId: string) {
   const [prescription, setPrescription] = useState<PrescriptionDraft>({
     status: 'Draft',
     medications: [],
+    diagnosis: '',
+    clinicalNotes: '',
   });
 
   // Clinical Actions & Sub-Tabs state
@@ -62,6 +65,8 @@ export function usePatientAction(appointmentId: string) {
         setPrescription({
           status: 'Draft',
           medications: data.initialMedications || [],
+          diagnosis: '',
+          clinicalNotes: '',
         });
       })
       .catch((err) => {
@@ -104,6 +109,13 @@ export function usePatientAction(appointmentId: string) {
     }));
   }, []);
 
+  const setPrescriptionDetails = useCallback(
+    (details: Partial<Pick<PrescriptionDraft, 'diagnosis' | 'clinicalNotes'>>) => {
+      setPrescription((prev) => ({ ...prev, ...details, status: 'Draft' }));
+    },
+    []
+  );
+
   const removeMedication = useCallback((medicationId: string) => {
     setPrescription((prev) => ({
       ...prev,
@@ -136,15 +148,46 @@ export function usePatientAction(appointmentId: string) {
     if (!appointmentId || prescription.medications.length === 0) return;
     setIsSendingPharmacy(true);
     try {
-      const res = await patientActionService.sendToPharmacy(appointmentId, prescription.medications);
+      const validationError = validatePrescription(prescription);
+      if (validationError) {
+        throw new Error(validationError);
+      }
+      const res = await patientActionService.sendToPharmacy(appointmentId, {
+        patient_id: Number(patient?.id),
+        apt_id: Number(appointmentId),
+        doctor_id: appointment?.doctorId ?? 0,
+        diagnosis: prescription.diagnosis,
+        clinical_notes: prescription.clinicalNotes,
+        medicines: prescription.medications.map(toPrescriptionMedicine),
+      });
       setPrescription((prev) => ({ ...prev, status: 'Sent' }));
-      setActionNotice(res.message);
-    } catch {
-      setActionNotice('Failed to send prescription');
+      toast.success('Prescription saved successfully', {
+        description: `${res.message} Record ID: ${res.record_id}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save prescription';
+      toast.error('Prescription could not be saved', {
+        description: message,
+      });
     } finally {
       setIsSendingPharmacy(false);
     }
-  }, [appointmentId, prescription.medications]);
+  }, [appointmentId, appointment?.doctorId, patient?.id, prescription]);
+
+  const saveAdmittedPrescription = useCallback(async (payload: AdmittedPrescriptionPayload) => {
+    try {
+      const result = await patientActionService.saveAdmittedPrescription(payload);
+      toast.success('Admitted prescription saved successfully', {
+        description: `${result.message} Record ID: ${result.record_id}`,
+      });
+      return result;
+    } catch (error) {
+      toast.error('Admitted prescription could not be saved', {
+        description: error instanceof Error ? error.message : 'Failed to save admitted prescription',
+      });
+      throw error;
+    }
+  }, []);
 
   const escalateForAdmission = useCallback(async (reason?: string) => {
     if (!appointmentId) return;
@@ -248,10 +291,12 @@ export function usePatientAction(appointmentId: string) {
     activeAdmissionTab,
     setActiveAdmissionTab,
     addMedication,
+    setPrescriptionDetails,
     removeMedication,
     clearMedications,
     saveNotes,
     sendToPharmacy,
+    saveAdmittedPrescription,
     escalateForAdmission,
     submitAdmission,
     submitReferral,

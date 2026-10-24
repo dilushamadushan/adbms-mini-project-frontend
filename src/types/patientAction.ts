@@ -68,18 +68,21 @@ export interface PatientHistoryEntry {
 
 export interface Medication {
   id: string;
+  medicineId: number;
   medicine: string;
+  genericName: string;
   dose: string;
-  route: string;
   frequency: string;
   duration: string;
-  timeSlots: string;
   instructions: string;
+  clinicalNote?: string;
 }
 
 export interface PrescriptionDraft {
   status: 'Draft' | 'Sent';
   medications: Medication[];
+  diagnosis: string;
+  clinicalNotes: string;
   updatedAt?: string;
 }
 
