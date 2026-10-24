@@ -251,7 +251,7 @@ export default function PharmacistReports() {
                         </td>
                         <td className="py-2.5 px-3 text-gray-600">{item.reorder_level} units</td>
                         <td className="py-2.5 px-3 font-semibold text-red-600">+{item.deficit_quantity} units</td>
-                        <td className="py-2.5 px-3 text-gray-800">Rs. {Number(item.unit_price).toFixed(2)}</td>
+                        <td className="py-2.5 px-3 text-gray-800">Rs. {Math.round(Number(item.unit_price))}</td>
                       </tr>
                     ))}
                   </tbody>

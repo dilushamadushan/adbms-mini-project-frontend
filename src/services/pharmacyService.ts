@@ -8,7 +8,7 @@ export interface Medicine {
   unit_price: number;
   stock_qty: number;
   reorder_level: number;
-  expiry_date: string;
+  expiry_date?: string | null;
   is_active: boolean;
   days_to_expiry?: number;
   stock_status?: 'IN_STOCK' | 'LOW_STOCK' | 'EXPIRING_SOON' | 'EXPIRED' | 'OUT_OF_STOCK';
@@ -21,7 +21,7 @@ export interface MedicinePayload {
   unit_price: number;
   stock_qty?: number;
   reorder_level?: number;
-  expiry_date: string;
+  expiry_date?: string;
   is_active?: boolean;
 }
 
