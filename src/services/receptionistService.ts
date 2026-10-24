@@ -52,11 +52,13 @@ export interface AdmissionRecord {
   bed_id: number | null;
   bed_number: string | null;
   admitted_at: string;
+  created_at: string;
   admission_reason: string;
   status: 'Pending' | 'Admitted' | 'Discharge Authorized' | 'Discharged';
   discharge_authorized_by: number | null;
   discharge_authorized_at: string | null;
   discharge_notes: string | null;
+  discharged_at: string | null;
   bill_id: number | null;
   room_charges: number | null;
   treatment_charges: number | null;
