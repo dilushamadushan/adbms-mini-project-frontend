@@ -32,6 +32,18 @@ export interface StockReceiptPayload {
   received_by: number;
 }
 
+export interface StockReceiptItem {
+  receipt_id: number;
+  medicine_id: number;
+  med_name: string;
+  generic_name?: string | null;
+  quantity: number;
+  expiry_date: string;
+  received_by: number;
+  received_by_name?: string | null;
+  received_at: string;
+}
+
 export interface LowStockAlert {
   medicine_id: number;
   med_name: string;
@@ -109,6 +121,11 @@ export const pharmacyService = {
   receiveStock: async (payload: StockReceiptPayload): Promise<any> => {
     const res = await apiClient.post('/pharmacy/inventory/stock-receipt', payload);
     return res.data;
+  },
+
+  getStockReceipts: async (limit: number = 50): Promise<StockReceiptItem[]> => {
+    const res = await apiClient.get<StockReceiptItem[]>(`/pharmacy/inventory/stock-receipts?limit=${limit}`);
+    return res.data || [];
   },
 
   getLowStockAlerts: async (): Promise<LowStockAlert[]> => {

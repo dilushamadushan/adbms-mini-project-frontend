@@ -304,11 +304,6 @@ export default function PurchaseOrderModal({ order, onClose }: PurchaseOrderModa
                   </div>
                 </div>
               )}
-
-              <div className="text-[10px] text-gray-400 text-center mt-6 border-t border-gray-100 pt-3">
-                * This document serves as an authorized procurement order under MediCore Hospital Pharmacy Regulations.
-                Minimum delivery lead time is 3 business days from authorization.
-              </div>
             </div>
           </div>
         </div>
