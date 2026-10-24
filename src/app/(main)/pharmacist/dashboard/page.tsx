@@ -16,7 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 export default function PharmacistDashboard() {
   const { user } = useAuth();
   const [kpis, setKpis] = useState<PharmacyDashboardKpis | null>(null);
-  const [recentMeds, setRecentMeds] = useState<Medicine[]>([]);
+  const [fullInventory, setFullInventory] = useState<Medicine[]>([]);
+  const [inventorySearch, setInventorySearch] = useState('');
   const [pendingQueue, setPendingQueue] = useState<PrescriptionQueueItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,7 +38,7 @@ export default function PharmacistDashboard() {
         pharmacyService.getPendingPrescriptions().catch(() => [])
       ]);
       setKpis(kpiData);
-      setRecentMeds(invData.slice(0, 6));
+      setFullInventory(invData);
       setPendingQueue(queueData);
     } finally {
       setIsLoading(false);
@@ -118,6 +119,14 @@ export default function PharmacistDashboard() {
       item.patient_name.toLowerCase().includes(q) ||
       item.med_name.toLowerCase().includes(q) ||
       item.doctor_name.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredInventory = fullInventory.filter(item => {
+    const q = inventorySearch.toLowerCase();
+    return (
+      item.med_name.toLowerCase().includes(q) ||
+      (item.generic_name && item.generic_name.toLowerCase().includes(q))
     );
   });
 
@@ -375,7 +384,7 @@ export default function PharmacistDashboard() {
                       {inStock ? (
                         <div className="font-semibold text-emerald-700 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>{rx.stock_qty} in stock · Rs. {Number(rx.unit_price).toFixed(2)}/ea</span>
+                          <span>{rx.stock_qty} in stock (Free Issue)</span>
                         </div>
                       ) : (
                         <div className="font-semibold text-red-600 flex items-center gap-1">
@@ -401,48 +410,112 @@ export default function PharmacistDashboard() {
         )}
       </div>
 
-      {/* QUICK INVENTORY OVERVIEW */}
-      <div className="bg-white rounded-xl border border-[#DCE3E0] shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* FULL PHARMACY INVENTORY */}
+      <div className="bg-white rounded-xl border border-[#DCE3E0] shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h2 className="text-base font-bold text-[#0E4749] flex items-center gap-2">
-              <Layers className="w-5 h-5 text-[#0E4749]" /> Pharmacy Inventory Highlights
+              <Layers className="w-5 h-5 text-[#0E4749]" /> Pharmacy Medicine Inventory
             </h2>
-            <p className="text-xs text-[#5B6472] mt-0.5">Current stock availability across essential hospital medicines.</p>
+            <p className="text-xs text-[#5B6472] mt-0.5">
+              Complete inventory of all active hospital medicines, current stock, and batch expiries.
+            </p>
           </div>
-          <Link
-            href="/pharmacist/inventory"
-            className="text-xs font-semibold text-[#0E4749] hover:underline flex items-center gap-1"
-          >
-            Manage All Inventory <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search inventory drugs..."
+                value={inventorySearch}
+                onChange={(e) => setInventorySearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
+              />
+            </div>
+            <Link
+              href="/pharmacist/inventory"
+              className="text-xs font-semibold px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-[#0E4749] rounded-lg border border-teal-200 transition flex items-center gap-1 shrink-0"
+            >
+              <span>Manage Inventory</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[460px] overflow-y-auto border border-gray-100 rounded-xl">
           <table className="w-full text-left text-sm">
-            <thead className="bg-[#F8F9FA] text-xs font-semibold text-[#5B6472] uppercase border-b border-[#DCE3E0]">
+            <thead className="bg-[#F8F9FA] text-xs font-semibold text-[#5B6472] uppercase border-b border-[#DCE3E0] sticky top-0 z-10 shadow-xs">
               <tr>
                 <th className="py-2.5 px-3">Medicine</th>
                 <th className="py-2.5 px-3">Available Stock</th>
-                <th className="py-2.5 px-3">Unit Price</th>
+                <th className="py-2.5 px-3">Reorder Threshold</th>
+                <th className="py-2.5 px-3">Batch Expiry</th>
                 <th className="py-2.5 px-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DCE3E0]">
-              {recentMeds.map((m) => (
-                <tr key={m.medicine_id} className="hover:bg-gray-50/60">
-                  <td className="py-2.5 px-3 font-semibold text-gray-900">{m.med_name}</td>
-                  <td className="py-2.5 px-3 font-medium text-gray-700">{m.stock_qty} units</td>
-                  <td className="py-2.5 px-3 text-gray-800">Rs. {Number(m.unit_price).toFixed(2)}</td>
-                  <td className="py-2.5 px-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                      m.stock_qty <= m.reorder_level ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                    }`}>
-                      {m.stock_qty <= m.reorder_level ? 'Low Stock' : 'Good'}
-                    </span>
+              {filteredInventory.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-xs text-gray-400">
+                    No matching medicines found in inventory.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredInventory.map((m) => {
+                  const isLow = m.stock_qty <= m.reorder_level;
+                  const days = m.days_to_expiry ?? 999;
+                  return (
+                    <tr key={m.medicine_id} className="hover:bg-gray-50/60 transition">
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-gray-900">{m.med_name}</div>
+                        <div className="text-[11px] text-gray-500">{m.generic_name || '—'}</div>
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-gray-800">
+                        <span className={m.stock_qty <= 0 ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-emerald-700'}>
+                          {m.stock_qty} units
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs text-gray-600">
+                        {m.reorder_level} units
+                      </td>
+                      <td className="py-2.5 px-3 text-xs">
+                        <div className="text-gray-700 font-medium">
+                          {m.expiry_date ? m.expiry_date.slice(0, 10) : '—'}
+                        </div>
+                        {m.stock_qty <= 0 ? (
+                          <span className="text-gray-400 text-[10px]">No physical stock</span>
+                        ) : days < 0 ? (
+                          <span className="text-red-600 font-bold text-[10px]">Expired</span>
+                        ) : days <= 30 ? (
+                          <span className="text-orange-600 text-[10px]">{days}d remaining</span>
+                        ) : (
+                          <span className="text-gray-400 text-[10px]">{days}d remaining</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          m.stock_qty <= 0
+                            ? 'bg-red-100 text-red-800'
+                            : days < 0
+                            ? 'bg-red-100 text-red-800'
+                            : isLow
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {m.stock_qty <= 0
+                            ? 'Out of Stock'
+                            : days < 0
+                            ? 'Expired'
+                            : isLow
+                            ? 'Low Stock'
+                            : 'Good'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -509,9 +582,6 @@ export default function PharmacistDashboard() {
                       {selectedRx.duration && <span> · Duration: <strong>{selectedRx.duration}</strong></span>}
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 bg-teal-50 text-[#0E4749] font-bold text-xs rounded border border-teal-200">
-                    Rs. {Number(selectedRx.unit_price).toFixed(2)} / unit
-                  </span>
                 </div>
 
                 <div className="pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-600">
@@ -520,7 +590,7 @@ export default function PharmacistDashboard() {
                 </div>
               </div>
 
-              {/* Quantity to Dispense & Subtotal */}
+              {/* Quantity to Dispense */}
               <div className="bg-teal-50/50 border border-teal-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -535,13 +605,6 @@ export default function PharmacistDashboard() {
                     onChange={(e) => setDispenseQty(parseInt(e.target.value, 10) || 1)}
                     className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-base text-[#0E4749] bg-white focus:outline-none focus:ring-2 focus:ring-[#0E4749]"
                   />
-                </div>
-
-                <div className="pt-2 border-t border-teal-200/60 flex justify-between items-center text-xs">
-                  <span className="font-semibold text-gray-700">Total Prescription Bill:</span>
-                  <span className="font-black text-base text-[#0E4749]">
-                    Rs. {(dispenseQty * Number(selectedRx.unit_price || 0)).toFixed(2)}
-                  </span>
                 </div>
               </div>
 

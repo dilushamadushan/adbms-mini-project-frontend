@@ -21,7 +21,10 @@ function getAdmissionDate(admittedAt: string): string {
 
 export default function ReceptionistAdmissions() {
   const [admissions, setAdmissions] = useState<AdmissionRecord[]>([]);
+  const [dischargedPatients, setDischargedPatients] = useState<AdmissionRecord[]>([]);
   const [selectedAdmission, setSelectedAdmission] = useState<AdmissionRecord | null>(null);
+  const [dischargeDateFilter, setDischargeDateFilter] = useState<'week' | 'month' | 'date' | 'all'>('month');
+  const [selectedDischargeDate, setSelectedDischargeDate] = useState('');
   /*
   const [dischargeDate, setDischargeDate] = useState(toDateInputValue(new Date()));
   */
@@ -29,11 +32,38 @@ export default function ReceptionistAdmissions() {
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isDischarging, setIsDischarging] = useState(false);
+  const filteredDischargedPatients = dischargedPatients.filter((admission) => {
+    if (!admission.discharged_at) return false;
+    const dischargeDate = admission.discharged_at.slice(0, 10);
+    if (dischargeDateFilter === 'all') return true;
+    if (dischargeDateFilter === 'date') return Boolean(selectedDischargeDate) && dischargeDate === selectedDischargeDate;
+
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (dischargeDateFilter === 'week') {
+      const daysSinceMonday = (startDate.getDay() + 6) % 7;
+      startDate.setDate(startDate.getDate() - daysSinceMonday);
+    } else {
+      startDate.setDate(1);
+    }
+    const dateKey = (date: Date) => [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+    return dischargeDate >= dateKey(startDate) && dischargeDate <= dateKey(today);
+  });
 
   useEffect(() => {
-    receptionistService.getAdmissions(true)
-      .then((records) => {
-        setAdmissions(records.filter((admission) => admission.status === 'Discharge Authorized'));
+    Promise.all([
+      receptionistService.getAdmissions(true),
+      receptionistService.getAdmissions(false),
+    ])
+      .then(([activeRecords, allRecords]) => {
+        setAdmissions(activeRecords.filter((admission) => admission.status === 'Discharge Authorized'));
+        setDischargedPatients(allRecords.filter(
+          (admission) => admission.status === 'Discharged' && admission.discharged_at,
+        ));
       })
       .catch(() => setError('Admissions authorized for discharge could not be loaded.'))
       .finally(() => setIsLoading(false));
@@ -59,6 +89,12 @@ export default function ReceptionistAdmissions() {
     try {
       const result = await receptionistService.dischargeAuthorizedPatient(selectedAdmission.admission_id);
       setSuccess(`${result.admission.patient_name} discharged successfully.`);
+      if (result.admission.discharged_at) {
+        setDischargedPatients((current) => [
+          result.admission,
+          ...current.filter((admission) => admission.admission_id !== result.admission.admission_id),
+        ]);
+      }
       setAdmissions((current) => current.filter(
         (admission) => admission.admission_id !== selectedAdmission.admission_id,
       ));
@@ -181,6 +217,71 @@ export default function ReceptionistAdmissions() {
           No patients are currently authorized for discharge.
         </section>
       )}
+
+      <section className="overflow-hidden rounded-2xl border border-[#DCE3E0] bg-white shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#DCE3E0] p-5">
+          <div>
+            <h3 className="font-bold text-[#0E4749]">Discharged patients</h3>
+            <p className="mt-1 text-sm text-[#5B6472]">Filter patients by their discharge date.</p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm font-semibold">
+              Date range
+              <select
+                value={dischargeDateFilter}
+                onChange={(event) => setDischargeDateFilter(event.target.value as 'week' | 'month' | 'date' | 'all')}
+                className="mt-1.5 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"
+              >
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="date">Specific date</option>
+                <option value="all">All dates</option>
+              </select>
+            </label>
+            {dischargeDateFilter === 'date' && (
+              <label className="text-sm font-semibold">
+                Discharge date
+                <input
+                  type="date"
+                  value={selectedDischargeDate}
+                  onChange={(event) => setSelectedDischargeDate(event.target.value)}
+                  className="mt-1.5 w-full rounded-lg border border-[#DCE3E0] bg-white p-3 font-normal focus:border-[#0E4749] focus:outline-none focus:ring-2 focus:ring-teal-900/10"
+                />
+              </label>
+            )}
+          </div>
+        </div>
+        {filteredDischargedPatients.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-left text-sm">
+              <thead className="bg-gray-50 text-xs uppercase text-[#5B6472]">
+                <tr>
+                  <th className="p-4">Patient</th>
+                  <th className="p-4">Ward</th>
+                  <th className="p-4">Discharged at</th>
+                  <th className="p-4">Discharge notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#DCE3E0]">
+                {filteredDischargedPatients.map((admission) => (
+                  <tr key={admission.admission_id}>
+                    <td className="p-4 font-semibold text-gray-900">{admission.patient_name}</td>
+                    <td className="p-4">{admission.ward_name}</td>
+                    <td className="p-4">{admission.discharged_at ? new Date(admission.discharged_at).toLocaleString() : '—'}</td>
+                    <td className="max-w-sm p-4">{admission.discharge_notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="p-6 text-center text-sm text-[#5B6472]">
+            {dischargeDateFilter === 'date' && !selectedDischargeDate
+              ? 'Choose a date to view discharged patients.'
+              : 'No discharged patients found for this date range.'}
+          </p>
+        )}
+      </section>
     </div>
   );
 }
