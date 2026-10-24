@@ -50,7 +50,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const nurseNavItems = [
     { href: "/nurse/dashboard", label: "Ward Overview", icon: Grid },
     { href: "/nurse/patients", label: "My Ward's Patients", icon: Users },
-    { href: "/nurse/admissions", label: "Assign Admission Beds", icon: ClipboardList },
+    { href: "/nurse/orders", label: "Doctor Orders", icon: ClipboardList },
+    { href: "/nurse/mar", label: "MAR (Medications)", icon: Pill },
+    { href: "/nurse/notes", label: "Nursing Notes", icon: FileText },
   ];
 
   const receptionistNavItems = [
