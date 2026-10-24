@@ -87,10 +87,10 @@ export function KpiOverviewCards() {
     } catch (err: unknown) {
       const msg =
         err &&
-        typeof err === 'object' &&
-        'response' in err
+          typeof err === 'object' &&
+          'response' in err
           ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
-            'Failed to load KPI data'
+          'Failed to load KPI data'
           : 'Failed to load KPI data';
       setError(msg);
     } finally {
@@ -247,9 +247,9 @@ export function KpiOverviewCards() {
 
           <div className="bed-chip-grid">
             {([
-              { label: 'Total',    val: bd?.total_beds,    color: '#0E4749', bg: 'rgba(14,71,73,.07)' },
+              { label: 'Total', val: bd?.total_beds, color: '#0E4749', bg: 'rgba(14,71,73,.07)' },
               { label: 'Occupied', val: bd?.occupied_beds, color: '#E07856', bg: 'rgba(224,120,86,.09)' },
-              { label: 'Available',val: bd?.available_beds,color: '#10b981', bg: 'rgba(16,185,129,.08)' },
+              { label: 'Available', val: bd?.available_beds, color: '#10b981', bg: 'rgba(16,185,129,.08)' },
               { label: 'Cleaning', val: bd?.cleaning_beds, color: '#f59e0b', bg: 'rgba(245,158,11,.08)' },
             ] as const).map((chip) => (
               <div key={chip.label} className="bed-chip" style={{ background: chip.bg }}>
@@ -276,10 +276,10 @@ export function KpiOverviewCards() {
             </div>
           ) : (
             <div className="appt-pills">
-              <ApptPill label="Scheduled" count={ad?.scheduled ?? 0} bg="rgba(99,102,241,.07)"  icon={<Clock      style={{ width: 20, height: 20, color: '#6366f1', flexShrink: 0 }} />} />
-              <ApptPill label="Completed" count={ad?.completed ?? 0} bg="rgba(16,185,129,.07)"  icon={<CheckCircle2 style={{ width: 20, height: 20, color: '#10b981', flexShrink: 0 }} />} />
-              <ApptPill label="Cancelled" count={ad?.cancelled ?? 0} bg="rgba(239,68,68,.06)"   icon={<XCircle    style={{ width: 20, height: 20, color: '#ef4444', flexShrink: 0 }} />} />
-              <ApptPill label="No-show"  count={ad?.no_show  ?? 0} bg="rgba(245,158,11,.07)"  icon={<UserX      style={{ width: 20, height: 20, color: '#f59e0b', flexShrink: 0 }} />} />
+              <ApptPill label="Scheduled" count={ad?.scheduled ?? 0} bg="rgba(99,102,241,.07)" icon={<Clock style={{ width: 20, height: 20, color: '#6366f1', flexShrink: 0 }} />} />
+              <ApptPill label="Completed" count={ad?.completed ?? 0} bg="rgba(16,185,129,.07)" icon={<CheckCircle2 style={{ width: 20, height: 20, color: '#10b981', flexShrink: 0 }} />} />
+              <ApptPill label="Cancelled" count={ad?.cancelled ?? 0} bg="rgba(239,68,68,.06)" icon={<XCircle style={{ width: 20, height: 20, color: '#ef4444', flexShrink: 0 }} />} />
+              <ApptPill label="No-show" count={ad?.no_show ?? 0} bg="rgba(245,158,11,.07)" icon={<UserX style={{ width: 20, height: 20, color: '#f59e0b', flexShrink: 0 }} />} />
             </div>
           )}
 
@@ -292,7 +292,7 @@ export function KpiOverviewCards() {
                   { pct: (ad.scheduled / ad.total_today) * 100, color: '#6366f1' },
                   { pct: (ad.completed / ad.total_today) * 100, color: '#10b981' },
                   { pct: (ad.cancelled / ad.total_today) * 100, color: '#ef4444' },
-                  { pct: (ad.no_show  / ad.total_today) * 100, color: '#f59e0b' },
+                  { pct: (ad.no_show / ad.total_today) * 100, color: '#f59e0b' },
                 ]
                   .filter((s) => s.pct > 0)
                   .map((seg, i) => (
@@ -304,7 +304,7 @@ export function KpiOverviewCards() {
                   { label: 'Scheduled', color: '#6366f1' },
                   { label: 'Completed', color: '#10b981' },
                   { label: 'Cancelled', color: '#ef4444' },
-                  { label: 'No-show',  color: '#f59e0b' },
+                  { label: 'No-show', color: '#f59e0b' },
                 ].map((l) => (
                   <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.65rem', color: '#6b7280' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.color, display: 'inline-block' }} />
