@@ -7,6 +7,7 @@ import {
   Calendar,
   Clock,
   RotateCcw,
+  CheckCircle2,
   User,
   ArrowRight,
   Activity,
@@ -190,7 +191,7 @@ export default function PatientActionPage() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<DoctorUserAppointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'Today' | 'Upcoming' | 'Past'>('Today');
+  const [activeTab, setActiveTab] = useState<'all' | 'Today' | 'Upcoming' | 'Completed' | 'Past'>('Today');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
 
@@ -226,8 +227,11 @@ export default function PatientActionPage() {
   // Counts calculated on total list before search filters
   const counts = useMemo(() => {
     return {
-      today: appointments.filter((a) => a.day_group === 'Today').length,
+      today: appointments.filter(
+        (a) => a.day_group === 'Today' && a.status?.toLowerCase() !== 'completed'
+      ).length,
       upcoming: appointments.filter((a) => a.day_group === 'Upcoming').length,
+      completed: appointments.filter((a) => a.status?.toLowerCase() === 'completed').length,
       past: appointments.filter((a) => a.day_group === 'Past').length,
     };
   }, [appointments]);
@@ -248,7 +252,10 @@ export default function PatientActionPage() {
   }, [appointments, searchQuery, selectedDate]);
 
   const todayList = useMemo(
-    () => filteredAppointments.filter((a) => a.day_group === 'Today'),
+    () =>
+      filteredAppointments.filter(
+        (a) => a.day_group === 'Today' && a.status?.toLowerCase() !== 'completed'
+      ),
     [filteredAppointments]
   );
   const upcomingList = useMemo(
@@ -259,6 +266,10 @@ export default function PatientActionPage() {
     () => filteredAppointments.filter((a) => a.day_group === 'Past'),
     [filteredAppointments]
   );
+  const completedList = useMemo(
+    () => filteredAppointments.filter((a) => a.status?.toLowerCase() === 'completed'),
+    [filteredAppointments]
+  );
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -266,7 +277,7 @@ export default function PatientActionPage() {
     setActiveTab('all');
   };
 
-  const handleTabClick = (tab: 'Today' | 'Upcoming' | 'Past') => {
+  const handleTabClick = (tab: 'Today' | 'Upcoming' | 'Completed' | 'Past') => {
     // If clicking current active tab, toggle to show all; otherwise focus that tab
     setActiveTab((prev) => (prev === tab ? 'all' : tab));
   };
@@ -369,6 +380,33 @@ export default function PatientActionPage() {
             }`}
           >
             {counts.past}
+          </span>
+        </button>
+
+        {/* Completed Tab */}
+        <button
+          type="button"
+          onClick={() => handleTabClick('Completed')}
+          className={`ml-auto flex items-center gap-3 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-xs ${
+            activeTab === 'Completed'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50'
+          }`}
+        >
+          <CheckCircle2
+            className={`w-5 h-5 ${
+              activeTab === 'Completed' ? 'text-white' : 'text-emerald-600'
+            }`}
+          />
+          <span>Completed</span>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+              activeTab === 'Completed'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-emerald-50 text-emerald-700'
+            }`}
+          >
+            {counts.completed}
           </span>
         </button>
       </div>
@@ -522,6 +560,67 @@ export default function PatientActionPage() {
                         <Eye className="w-3.5 h-3.5 text-slate-500" />
                         View
                         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section 3: Completed Appointments */}
+          {(activeTab === 'all' || activeTab === 'Completed') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <h2 className="font-bold text-slate-900 text-sm">
+                  Completed Appointments
+                </h2>
+                <span className="bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {completedList.length}
+                </span>
+              </div>
+
+              {completedList.length === 0 ? (
+                <div className="bg-white border border-slate-200/90 rounded-2xl py-8 px-4 text-center text-xs text-slate-400">
+                  No completed appointments.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {completedList.map((item) => (
+                    <div
+                      key={`completed-${item.apt_id}`}
+                      className="bg-white border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs hover:border-emerald-300 transition-all"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                          <User className="w-6 h-6 stroke-[1.75]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-900 text-sm">
+                              {item.patient_name}
+                            </h3>
+                            <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                              Completed
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <span>
+                              {formatDisplayDate(item.apt_date, item.appointment_time)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/doctor/patient-action/${item.apt_id}`}
+                        className="inline-flex items-center justify-center gap-1.5 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors self-end sm:self-auto"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>
                   ))}

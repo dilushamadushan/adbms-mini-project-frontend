@@ -1,6 +1,64 @@
 import apiClient from '@/lib/apiClient';
+
+export type LabOrderPatient = {
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  gender?: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+  appointment_id: number;
+  appointment_date: string;
+  appointment_status: string;
+};
+
+export type CurrentAdmittedPatient = {
+  admission_id: number;
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  gender: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+  ward_name: string | null;
+  bed_number: string | null;
+  admission_reason: string | null;
+  admitted_at: string | null;
+  status: string;
+};
+
+export type CreatedLabOrder = {
+  lab_id: number;
+  patient_id: number;
+  doctor_id: number;
+  test_type: string;
+  status: string;
+  results_text: string;
+};
+
+export type PatientLabResult = {
+  lab_id: number;
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  blood_group: string | null;
+  allergies: string | null;
+  doctor_id?: number | null;
+  doctor_name?: string | null;
+  test_type: string;
+  status: string;
+  result: string;
+  ordered_at?: string | null;
+  updated_at?: string | null;
+};
 import { calcAge, formatTime } from '@/lib/dateUtils';
 import type { ApiAppointment, AppointmentStatus, DoctorAppointment, DoctorUserAppointment } from '@/types/doctor';
+
+export interface DoctorMedicine {
+    medicine_id: number;
+    med_name: string;
+    generic_name: string | null;
+}
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'COMPLETED',
@@ -23,9 +81,30 @@ function mapAppointment(a: ApiAppointment): DoctorAppointment {
         reason: a.reason ?? a.dept_name ?? 'Consultation',
         status: STATUS_MAP[a.status?.toLowerCase()] ?? 'SCHEDULED',
     };
-}
+};
+
+export type DoctorCurrentScheduleSlot = {
+  appointment_date: string;
+  appointment_time: string;
+  slot_status: 'OPEN' | 'BOOKED' | string;
+  apt_id: number | null;
+  patient_name: string | null;
+  appointment_status: string | null;
+};
 
 export const doctorService = {
+  getCurrentAdmittedPatients: () =>
+    apiClient.get<CurrentAdmittedPatient[]>('/doctor/current-admitted'),
+  getLabOrderPatients: () =>
+    apiClient.get<LabOrderPatient[]>('/doctor/lab-order-patients'),
+  createLabOrder: (payload: { patient_id: number; doctor_user_id: number; test_type: string }) =>
+    apiClient.post<CreatedLabOrder>('/doctor/lab-orders', payload),
+  getPatientLabResults: (patientId: number) =>
+    apiClient.get<PatientLabResult[]>(`/doctor/lab-orders/patient/${patientId}`),
+  getCurrentSchedule: (doctorId: number) =>
+    apiClient.get<DoctorCurrentScheduleSlot[]>(`/doctor/current-schedule/${doctorId}`),
+  getCurrentScheduleByUser: (userId: number) =>
+    apiClient.get<DoctorCurrentScheduleSlot[]>(`/doctor/current-schedule-by-user/${userId}`),
     getAppointments: async (doctorId: number): Promise<DoctorAppointment[]> => {
         const res = await apiClient.get<ApiAppointment[]>(`/doctor/appointments/${doctorId}`);
         return (res.data || []).map(mapAppointment);
@@ -69,4 +148,9 @@ export const doctorService = {
         const res = await apiClient.get<DoctorUserAppointment[]>(`/doctor/appointments-by-user/${userId}`);
         return res.data || [];
     },
-};
+
+    getMedicines: async (): Promise<DoctorMedicine[]> => {
+        const res = await apiClient.get<DoctorMedicine[]>('/doctor/medicines');
+        return res.data || [];
+    },
+};

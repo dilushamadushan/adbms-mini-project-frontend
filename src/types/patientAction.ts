@@ -31,6 +31,12 @@ export interface AdmissionRequestData {
   user_id: number;
 }
 
+export interface DischargeRequestData {
+  admission_id: number;
+  doctor_id: number;
+  notes: string;
+}
+
 export interface WardOption {
   ward_id: number;
   ward_name: string;
@@ -62,18 +68,21 @@ export interface PatientHistoryEntry {
 
 export interface Medication {
   id: string;
+  medicineId: number;
   medicine: string;
+  genericName: string;
   dose: string;
-  route: string;
   frequency: string;
   duration: string;
-  timeSlots: string;
   instructions: string;
+  clinicalNote?: string;
 }
 
 export interface PrescriptionDraft {
   status: 'Draft' | 'Sent';
   medications: Medication[];
+  diagnosis: string;
+  clinicalNotes: string;
   updatedAt?: string;
 }
 
