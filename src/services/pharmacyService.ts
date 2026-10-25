@@ -8,7 +8,7 @@ export interface Medicine {
   unit_price: number;
   stock_qty: number;
   reorder_level: number;
-  expiry_date: string;
+  expiry_date?: string | null;
   is_active: boolean;
   days_to_expiry?: number;
   stock_status?: 'IN_STOCK' | 'LOW_STOCK' | 'EXPIRING_SOON' | 'EXPIRED' | 'OUT_OF_STOCK';
@@ -21,7 +21,7 @@ export interface MedicinePayload {
   unit_price: number;
   stock_qty?: number;
   reorder_level?: number;
-  expiry_date: string;
+  expiry_date?: string;
   is_active?: boolean;
 }
 
@@ -30,6 +30,18 @@ export interface StockReceiptPayload {
   quantity: number;
   expiry_date: string;
   received_by: number;
+}
+
+export interface StockReceiptItem {
+  receipt_id: number;
+  medicine_id: number;
+  med_name: string;
+  generic_name?: string | null;
+  quantity: number;
+  expiry_date: string;
+  received_by: number;
+  received_by_name?: string | null;
+  received_at: string;
 }
 
 export interface LowStockAlert {
@@ -109,6 +121,11 @@ export const pharmacyService = {
   receiveStock: async (payload: StockReceiptPayload): Promise<any> => {
     const res = await apiClient.post('/pharmacy/inventory/stock-receipt', payload);
     return res.data;
+  },
+
+  getStockReceipts: async (limit: number = 50): Promise<StockReceiptItem[]> => {
+    const res = await apiClient.get<StockReceiptItem[]>(`/pharmacy/inventory/stock-receipts?limit=${limit}`);
+    return res.data || [];
   },
 
   getLowStockAlerts: async (): Promise<LowStockAlert[]> => {

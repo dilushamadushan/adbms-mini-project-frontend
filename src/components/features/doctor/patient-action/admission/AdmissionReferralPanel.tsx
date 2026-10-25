@@ -18,10 +18,12 @@ interface AdmissionReferralPanelProps {
   userId: number;
   admissionReason: string;
   admission: AdmissionDetails | null;
+  notes: string;
+  onNotesChange: (value: string) => void;
   isAdmitted: boolean;
   initialTab?: AdmissionViewTab;
   onAdmissionSubmit?: (data: import('@/types/patientAction').AdmissionRequestData) => Promise<void>;
-  onDischargeSubmit?: (data: unknown) => void;
+  onDischargeSubmit?: (data: import('@/types/patientAction').DischargeRequestData) => Promise<void>;
   onSwitchToPrescription?: () => void;
   isSubmitting?: boolean;
 }
@@ -36,6 +38,8 @@ export function AdmissionReferralPanel({
   userId,
   admissionReason,
   admission,
+  notes,
+  onNotesChange,
   isAdmitted,
   onAdmissionSubmit,
   onDischargeSubmit,
@@ -100,8 +104,13 @@ export function AdmissionReferralPanel({
 
         {isAdmitted && currentTab === 'discharge' && (
           <DischargePatientForm
-            onConfirmDischarge={(data) => {
-              onDischargeSubmit?.(data);
+            admissionId={admission?.admission_id ?? 0}
+            doctorId={userId}
+            doctorName={doctorName}
+            notes={notes}
+            onNotesChange={onNotesChange}
+            onConfirmDischarge={async (data) => {
+              await onDischargeSubmit?.(data);
               onSwitchToPrescription?.();
             }}
             onCancel={onSwitchToPrescription}

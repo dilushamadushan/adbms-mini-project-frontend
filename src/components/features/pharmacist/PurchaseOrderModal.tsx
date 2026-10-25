@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useRef, useState } from 'react';
-import { Printer, X, Download, ShieldCheck, CheckCircle2, Clock, Building2, PackageCheck, Loader2 } from 'lucide-react';
-import { PurchaseOrder, pharmacyService } from '@/services/pharmacyService';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useRef } from 'react';
+import { Printer, X, Download, ShieldCheck, CheckCircle2, Clock, Building2 } from 'lucide-react';
+import { PurchaseOrder } from '@/services/pharmacyService';
 
 interface PurchaseOrderModalProps {
   order: PurchaseOrder | null;
@@ -11,39 +10,15 @@ interface PurchaseOrderModalProps {
   onOrderRestocked?: () => void;
 }
 
-export default function PurchaseOrderModal({ order, onClose, onOrderRestocked }: PurchaseOrderModalProps) {
-  const { user } = useAuth();
+export default function PurchaseOrderModal({ order, onClose }: PurchaseOrderModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
-  const [currentOrder, setCurrentOrder] = useState<PurchaseOrder | null>(order);
-  const [isRestocking, setIsRestocking] = useState(false);
-  const [showRestockConfirm, setShowRestockConfirm] = useState(false);
-  const [batchExpiry, setBatchExpiry] = useState(
-    new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!currentOrder) return null;
+  if (!order) return null;
+
+  const currentOrder = order;
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleConfirmRestock = async () => {
-    setIsRestocking(true);
-    setErrorMsg(null);
-    try {
-      const staffId = (user as any)?.staff_id || 5;
-      const updated = await pharmacyService.restockDeliveredOrder(currentOrder.order_id, staffId, batchExpiry);
-      setCurrentOrder(updated);
-      setSuccessMsg(`Order ${currentOrder.order_number} successfully received and restocked into active inventory!`);
-      setShowRestockConfirm(false);
-      if (onOrderRestocked) onOrderRestocked();
-    } catch (err: any) {
-      setErrorMsg(err?.response?.data?.detail || 'Failed to restock order items.');
-    } finally {
-      setIsRestocking(false);
-    }
   };
 
   const formattedOrderDate = new Date(currentOrder.order_date).toLocaleDateString('en-GB', {
@@ -80,15 +55,6 @@ export default function PurchaseOrderModal({ order, onClose, onOrderRestocked }:
           </div>
 
           <div className="flex items-center gap-2">
-            {!isAlreadyReceived && (
-              <button
-                onClick={() => setShowRestockConfirm(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition"
-              >
-                <PackageCheck className="w-4 h-4" /> Order Arrived? Restock Items
-              </button>
-            )}
-
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-4 py-2 bg-[#0E4749] hover:bg-[#082d2f] text-white rounded-lg text-xs font-semibold shadow-sm transition"
@@ -103,62 +69,6 @@ export default function PurchaseOrderModal({ order, onClose, onOrderRestocked }:
             </button>
           </div>
         </div>
-
-        {/* Action feedback banners (Screen only) */}
-        {successMsg && (
-          <div className="p-3 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 print:hidden px-6">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-        {errorMsg && (
-          <div className="p-3 bg-red-50 border-b border-red-200 text-red-800 text-xs flex items-center gap-2 print:hidden px-6">
-            <X className="w-4 h-4 text-red-600 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Modal: Confirm Delivery & Restock Intake Dialog */}
-        {showRestockConfirm && (
-          <div className="bg-emerald-50 border-b border-emerald-200 p-4 px-6 print:hidden">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h4 className="font-bold text-emerald-900 text-sm flex items-center gap-1.5">
-                  <PackageCheck className="w-4 h-4 text-emerald-700" />
-                  Confirm Delivery & Restock into Active Inventory
-                </h4>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  The ordered medications will be added directly into inventory with automatic stock increment triggers.
-                </p>
-              </div>
-              <button onClick={() => setShowRestockConfirm(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-emerald-900">Shipment Batch Expiry Date:</label>
-                <input
-                  type="date"
-                  required
-                  value={batchExpiry}
-                  onChange={(e) => setBatchExpiry(e.target.value)}
-                  className="px-3 py-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-              </div>
-
-              <button
-                onClick={handleConfirmRestock}
-                disabled={isRestocking}
-                className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition"
-              >
-                {isRestocking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                Confirm Intake & Restock
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Printable Document Content */}
         <div className="overflow-y-auto p-8 print:p-0 print:overflow-visible flex-1" ref={printRef} id="printable-order-document">
@@ -239,7 +149,7 @@ export default function PurchaseOrderModal({ order, onClose, onOrderRestocked }:
                       <td className="py-2.5 px-3 font-semibold text-gray-900">{it.med_name}</td>
                       <td className="py-2.5 px-3 text-gray-500 italic">{it.generic_name || '—'}</td>
                       <td className="py-2.5 px-3 text-right font-bold text-[#0E4749]">{it.requested_quantity} units</td>
-                      <td className="py-2.5 px-3 text-right text-gray-700">Rs. {Number(it.unit_price).toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right text-gray-700">Rs. {Math.round(Number(it.unit_price))}</td>
                       <td className="py-2.5 px-3 text-right font-semibold text-gray-900">Rs. {Number(it.subtotal).toFixed(2)}</td>
                     </tr>
                   ))}
@@ -394,11 +304,6 @@ export default function PurchaseOrderModal({ order, onClose, onOrderRestocked }:
                   </div>
                 </div>
               )}
-
-              <div className="text-[10px] text-gray-400 text-center mt-6 border-t border-gray-100 pt-3">
-                * This document serves as an authorized procurement order under MediCore Hospital Pharmacy Regulations.
-                Minimum delivery lead time is 24 hours (1 business day) from authorization.
-              </div>
             </div>
           </div>
         </div>

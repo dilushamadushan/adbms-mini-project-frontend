@@ -130,7 +130,15 @@ export default function BookAppointment() {
         ? allDepartments.filter((dept) => validDeptNames.has(dept.dept_name.trim().toLowerCase()))
         : allDepartments;
 
-      setDepartments(filteredDeptList);
+      const departmentNames = new Set<string>();
+      const uniqueDepartments = filteredDeptList.filter((dept) => {
+        const departmentName = dept.dept_name.trim().toLowerCase();
+        if (departmentNames.has(departmentName)) return false;
+        departmentNames.add(departmentName);
+        return true;
+      });
+
+      setDepartments(uniqueDepartments);
 
       if (departmentResult.status === 'rejected') {
         setCatalogError('Departments could not be loaded. Please try again later.');
@@ -143,8 +151,8 @@ export default function BookAppointment() {
 
       // Set default department if available and none selected
       setSelectedDepartmentId((curr) => {
-        if (!curr && filteredDeptList.length > 0) {
-          return String(filteredDeptList[0].dept_id);
+        if (!curr && uniqueDepartments.length > 0) {
+          return String(uniqueDepartments[0].dept_id);
         }
         return curr;
       });
@@ -811,4 +819,3 @@ export default function BookAppointment() {
     </div>
   );
 }
-

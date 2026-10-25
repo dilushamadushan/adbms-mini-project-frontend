@@ -1,6 +1,6 @@
 import apiClient from '@/lib/apiClient';
 import { MOCK_PATIENT_ACTION_DATA } from '@/lib/patientActionMock';
-import type { AdmissionDetails, AdmissionRequestData, Medication, PatientActionData, WardOption } from '@/types/patientAction';
+import type { AdmissionDetails, AdmissionRequestData, DischargeRequestData, PatientActionData, WardOption } from '@/types/patientAction';
 import type { DoctorAppointment } from '@/types/doctor';
 
 interface PatientDetailsResponse {
@@ -23,6 +23,45 @@ interface PatientAppointmentDetailsResponse {
 interface AdmissionStatusResponse {
   is_admitted: boolean;
   admission: AdmissionDetails | null;
+}
+
+export interface PrescriptionPayload {
+  patient_id: number;
+  apt_id: number;
+  doctor_id: number;
+  diagnosis: string;
+  clinical_notes: string;
+  medicines: Array<{
+    medicine_id: number;
+    dose: string;
+    frequency: string;
+    duration: string;
+  }>;
+}
+
+export interface PrescriptionResponse {
+  message: string;
+  record_id: number;
+}
+
+export interface AdmittedPrescriptionPayload {
+  patient_id: number;
+  apt_id: number;
+  doctor_id: number;
+  diagnosis: string;
+  clinical_notes: string;
+  medicines: Array<{
+    medicine_id: number;
+    dose: string;
+    frequency: string;
+    duration: string;
+    first_dose: string;
+    notes: string;
+  }>;
+  nurse_orders: Array<{
+    order_type: string;
+    instruction: string;
+  }>;
 }
 
 const normalizeGender = (gender: string | null): 'Female' | 'Male' | 'Other' => {
@@ -61,6 +100,16 @@ export const patientActionService = {
     }
   },
 
+  requestDischarge: async (data: DischargeRequestData): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.post<{ message: string }>('/doctor/discharge', data);
+      return response.data;
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      throw new Error(detail || 'Failed to request discharge');
+    }
+  },
+
   /**
    * Fetches the appointment first to resolve its patient ID, then loads the
    * patient card data from the dedicated patient-details endpoint.
@@ -70,7 +119,6 @@ export const patientActionService = {
       apt_id: number;
       patient_id: number;
       doctor_id: number;
-      doctor_name: string;
       apt_date: string;
       time_slot: string;
       dept_name: string;
@@ -150,15 +198,45 @@ export const patientActionService = {
    */
   sendToPharmacy: async (
     appointmentId: string,
-    medications: Medication[]
-  ): Promise<{ success: boolean; message: string }> => {
+    payload: PrescriptionPayload
+  ): Promise<PrescriptionResponse> => {
     try {
-      // TODO: Connect to backend POST /doctor/patient-action/:appointmentId/prescription/send
-      await apiClient.post(`/doctor/patient-action/${appointmentId}/prescription/send`, { medications });
-      return { success: true, message: 'Prescription sent to pharmacy successfully' };
-    } catch {
-      // Mock success for seamless UI demonstration
-      return { success: true, message: 'Prescription sent to pharmacy (Demo mode)' };
+      const response = await apiClient.post<PrescriptionResponse>('/doctor/prescriptions', payload);
+      return response.data;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const response = (error as {
+          response?: { data?: { detail?: string | Array<{ msg?: string }> } };
+        }).response;
+        const detail = response?.data?.detail;
+        if (typeof detail === 'string') {
+          throw new Error(detail);
+        }
+        if (Array.isArray(detail)) {
+          throw new Error(detail.map((item) => item.msg).filter(Boolean).join(', ') || 'Invalid prescription data');
+        }
+      }
+      throw error;
+    }
+  },
+
+  saveAdmittedPrescription: async (
+    payload: AdmittedPrescriptionPayload
+  ): Promise<PrescriptionResponse> => {
+    try {
+      const response = await apiClient.post<PrescriptionResponse>(
+        '/doctor/admitted-prescriptions',
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const detail = (error as {
+          response?: { data?: { detail?: string } };
+        }).response?.data?.detail;
+        if (detail) throw new Error(detail);
+      }
+      throw error;
     }
   },
 
@@ -184,12 +262,20 @@ export const patientActionService = {
    */
   completeAppointment: async (appointmentId: string): Promise<{ success: boolean; message: string }> => {
     try {
-      // TODO: Connect to backend POST /doctor/patient-action/:appointmentId/complete
-      await apiClient.post(`/doctor/patient-action/${appointmentId}/complete`);
-      return { success: true, message: 'Appointment marked as completed' };
-    } catch {
-      // Mock success for seamless UI demonstration
-      return { success: true, message: 'Appointment marked as completed (Demo mode)' };
+      const appointmentResponse = await apiClient.get<{
+        doctor_id: number;
+      }>(`/appointments/${appointmentId}`);
+      const response = await apiClient.post<{ message: string }>(
+        '/doctor/appointments/complete',
+        {
+          appointment_id: Number(appointmentId),
+          doctor_id: appointmentResponse.data.doctor_id,
+        }
+      );
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail;
+      throw new Error(detail || 'Failed to complete appointment');
     }
   },
 

@@ -1,6 +1,49 @@
 import apiClient from '@/lib/apiClient';
+
+export type LabOrderPatient = {
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  gender?: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+  appointment_id: number;
+  appointment_date: string;
+  appointment_status: string;
+};
+
+export type CreatedLabOrder = {
+  lab_id: number;
+  patient_id: number;
+  doctor_id: number;
+  test_type: string;
+  status: string;
+  results_text: string;
+};
+
+export type PatientLabResult = {
+  lab_id: number;
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  blood_group: string | null;
+  allergies: string | null;
+  doctor_id?: number | null;
+  doctor_name?: string | null;
+  test_type: string;
+  status: string;
+  result: string;
+  ordered_at?: string | null;
+  updated_at?: string | null;
+};
 import { calcAge, formatTime } from '@/lib/dateUtils';
 import type { ApiAppointment, AppointmentStatus, DoctorAppointment, DoctorUserAppointment } from '@/types/doctor';
+
+export interface DoctorMedicine {
+    medicine_id: number;
+    med_name: string;
+    generic_name: string | null;
+}
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
     completed: 'COMPLETED',
@@ -26,6 +69,12 @@ function mapAppointment(a: ApiAppointment): DoctorAppointment {
 }
 
 export const doctorService = {
+  getLabOrderPatients: () =>
+    apiClient.get<LabOrderPatient[]>('/doctor/lab-order-patients'),
+  createLabOrder: (payload: { patient_id: number; doctor_user_id: number; test_type: string }) =>
+    apiClient.post<CreatedLabOrder>('/doctor/lab-orders', payload),
+  getPatientLabResults: (patientId: number) =>
+    apiClient.get<PatientLabResult[]>(`/doctor/lab-orders/patient/${patientId}`),
     getAppointments: async (doctorId: number): Promise<DoctorAppointment[]> => {
         const res = await apiClient.get<ApiAppointment[]>(`/doctor/appointments/${doctorId}`);
         return (res.data || []).map(mapAppointment);
@@ -69,4 +118,9 @@ export const doctorService = {
         const res = await apiClient.get<DoctorUserAppointment[]>(`/doctor/appointments-by-user/${userId}`);
         return res.data || [];
     },
-};
+
+    getMedicines: async (): Promise<DoctorMedicine[]> => {
+        const res = await apiClient.get<DoctorMedicine[]>('/doctor/medicines');
+        return res.data || [];
+    },
+};
