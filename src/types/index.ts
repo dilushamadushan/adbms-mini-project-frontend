@@ -91,11 +91,27 @@ export interface CreateStaffPayload {
   specialty?: string | null;
 }
 
+export interface UpdateStaffPayload {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  role?: string;
+  dept_id?: number | null;
+  specialty?: string | null;
+  is_active?: boolean;
+}
+
+export interface DeleteStaffResponse {
+  message?: string;
+  detail?: string;
+}
+
 export interface UpdateUserStatusResponse {
   message: string;
   user_id: number;
   is_active: boolean;
 }
+
 
 export interface Department {
   dept_id: number;
