@@ -1,5 +1,7 @@
 
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -9,8 +11,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster position="top-right" richColors closeButton />
+        </AuthProvider>
       </body>
     </html>
   );
 }
+

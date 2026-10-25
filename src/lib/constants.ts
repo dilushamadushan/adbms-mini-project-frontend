@@ -3,8 +3,9 @@ import { Role } from '@/types';
 export const APP_CONFIG = {
   name: 'MediCore',
   version: '1.0.0',
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000',
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000',
 } as const;
+
 
 export const ROLES = {
   ADMIN: 'ADMIN',
@@ -12,6 +13,7 @@ export const ROLES = {
   NURSE: 'NURSE',
   RECEPTIONIST: 'RECEPTIONIST',
   PATIENT: 'PATIENT',
+  PHARMACIST: 'PHARMACIST',
 } as const satisfies Record<Role, Role>;
 
 export const ROUTES: Record<Role, string> = {
@@ -20,6 +22,7 @@ export const ROUTES: Record<Role, string> = {
   NURSE: '/nurse/dashboard',
   RECEPTIONIST: '/receptionist/dashboard',
   PATIENT: '/patient/dashboard',
+  PHARMACIST: '/pharmacist/dashboard',
 };
 
 export const LOCAL_STORAGE_KEYS = {
