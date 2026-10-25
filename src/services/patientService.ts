@@ -53,11 +53,66 @@ export interface BookAppointmentResult {
   status: string;
 }
 
+export interface UpdatePatientProfilePayload {
+  first_name?: string;
+  last_name?: string;
+  dob?: string;
+  emergency_contact?: string;
+  email?: string;
+}
+
+export interface PatientPrescription {
+  rx_id: number;
+  record_id: number;
+  med_name: string;
+  dosage: string;
+  duration?: string | null;
+  status: string;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface PatientMedicalRecord {
+  record_id: number;
+  patient_id: number;
+  patient_name: string;
+  doctor_id: number;
+  doctor_name: string;
+  doctor_specialty?: string | null;
+  apt_id: number;
+  apt_date?: string | null;
+  diagnosis: string;
+  clinical_notes?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  prescriptions?: PatientPrescription[];
+}
+
 export const patientService = {
 
   getMyProfile: async (): Promise<PatientProfile> => {
     const response = await apiClient.get<PatientProfile>('/users/patient/me');
     return response.data;
+  },
+
+  updateMyProfile: async (data: UpdatePatientProfilePayload): Promise<unknown> => {
+    const response = await apiClient.put('/patient/profile', data);
+    return response.data;
+  },
+
+  getPrescriptions: async (patientId: number | string, status?: string): Promise<PatientPrescription[]> => {
+    const params = new URLSearchParams();
+    if (status && status !== 'ALL') {
+      params.append('status', status);
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await apiClient.get<PatientPrescription[]>(`/patient/prescriptions/${patientId}${queryString}`);
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  getMedicalRecords: async (patientId: number | string): Promise<PatientMedicalRecord[]> => {
+    const response = await apiClient.get<PatientMedicalRecord[]>(`/patient/medical-records/${patientId}`);
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   getDoctorDepartments: async (): Promise<DoctorDepartmentItem[]> => {
