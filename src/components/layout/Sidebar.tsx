@@ -11,9 +11,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { nurseService } from '@/services/nurseService';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingLabCount, setPendingLabCount] = useState<number>(0);
   const pathname = usePathname();
   const router = useRouter();
   const { role, userName, isLoaded, isAuthenticated, logout: authLogout } = useAuth();
@@ -23,6 +25,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace('/');
     }
   }, [isLoaded, isAuthenticated, router]);
+
+  React.useEffect(() => {
+    if (role === 'NURSE') {
+      const fetchCount = async () => {
+        try {
+          const res = await nurseService.getPendingLabCount();
+          setPendingLabCount(res.count || 0);
+        } catch {}
+      };
+      fetchCount();
+      const interval = setInterval(fetchCount, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [role]);
 
   if (!isLoaded || !isAuthenticated) {
     return null; 
@@ -51,6 +67,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/nurse/dashboard", label: "Ward Overview", icon: Grid },
     { href: "/nurse/patients", label: "My Ward's Patients", icon: Users },
     { href: "/nurse/orders", label: "Doctor Orders", icon: ClipboardList },
+    { href: "/nurse/labs", label: "Lab Tests", icon: TestTube, badgeCount: pendingLabCount },
     { href: "/nurse/mar", label: "MAR (Medications)", icon: Pill },
     { href: "/nurse/notes", label: "Nursing Notes", icon: FileText },
   ];
@@ -126,15 +143,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 (pathname === '/pharmacist/dashboard' ||
                   pathname.startsWith('/pharmacist/dispense') ||
                   pathname.startsWith('/pharmacist/prescriptions')));
+            const badgeCount = (item as any).badgeCount;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${isActive ? 'bg-teal-800 text-white' : 'text-teal-100 hover:bg-teal-800/50'}`}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${isActive ? 'bg-teal-800 text-white' : 'text-teal-100 hover:bg-teal-800/50'}`}
               >
-                <item.icon className="w-5 h-5" />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </div>
+                {typeof badgeCount === 'number' && badgeCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-[#E07856] text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
               </Link>
             )
           })}
