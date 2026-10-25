@@ -13,6 +13,7 @@ export default function DoctorPatientSearch() {
   const [query, setQuery] = useState("");
   const [gender, setGender] = useState<"All" | "Male" | "Female">("All");
   const [dateFilter, setDateFilter] = useState("All Dates");
+
   useEffect(() => {
     doctorService.getLabOrderPatients()
       .then((response) => setPatients(response.data))
