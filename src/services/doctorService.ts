@@ -12,6 +12,21 @@ export type LabOrderPatient = {
   appointment_status: string;
 };
 
+export type CurrentAdmittedPatient = {
+  admission_id: number;
+  patient_id: number;
+  patient_name: string;
+  age: number | null;
+  gender: string | null;
+  blood_group: string | null;
+  allergies: string | null;
+  ward_name: string | null;
+  bed_number: string | null;
+  admission_reason: string | null;
+  admitted_at: string | null;
+  status: string;
+};
+
 export type CreatedLabOrder = {
   lab_id: number;
   patient_id: number;
@@ -78,6 +93,8 @@ export type DoctorCurrentScheduleSlot = {
 };
 
 export const doctorService = {
+  getCurrentAdmittedPatients: () =>
+    apiClient.get<CurrentAdmittedPatient[]>('/doctor/current-admitted'),
   getLabOrderPatients: () =>
     apiClient.get<LabOrderPatient[]>('/doctor/lab-order-patients'),
   createLabOrder: (payload: { patient_id: number; doctor_user_id: number; test_type: string }) =>
