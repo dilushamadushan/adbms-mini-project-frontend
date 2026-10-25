@@ -476,6 +476,7 @@ export default function PharmacistReports() {
                       <tr>
                         <th className="py-3 px-4">Date</th>
                         <th className="py-3 px-4">Prescriptions Dispensed</th>
+                        <th className="py-3 px-4">Dispensed Medicines</th>
                         <th className="py-3 px-4">Total Units Dispensed</th>
                         <th className="py-3 px-4 text-right">Daily Revenue</th>
                       </tr>
@@ -483,12 +484,30 @@ export default function PharmacistReports() {
                     <tbody className="divide-y divide-[#DCE3E0]">
                       {dailyReport.map((day) => (
                         <tr key={String(day.report_date)} className="hover:bg-gray-50">
-                          <td className="py-3 px-4 font-semibold text-gray-800">
+                          <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">
                             {String(day.report_date).slice(0, 10)}
                           </td>
-                          <td className="py-3 px-4 text-gray-600">{day.total_dispensations} prescriptions</td>
-                          <td className="py-3 px-4 font-bold text-teal-700">{day.total_units} units</td>
-                          <td className="py-3 px-4 text-right font-bold text-[#0E4749]">
+                          <td className="py-3 px-4 text-gray-600 whitespace-nowrap">{day.total_dispensations} prescriptions</td>
+                          <td className="py-3 px-4">
+                            {day.medicines_detail ? (
+                              <div className="flex flex-wrap gap-1.5 max-w-md py-1">
+                                {day.medicines_detail.split(', ').map((med, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-teal-50 text-[#0E4749] border border-teal-200/70 shadow-xs"
+                                  >
+                                    {med}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : day.medicine_names ? (
+                              <span className="text-xs text-gray-700">{day.medicine_names}</span>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">None recorded</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-teal-700 whitespace-nowrap">{day.total_units} units</td>
+                          <td className="py-3 px-4 text-right font-bold text-[#0E4749] whitespace-nowrap">
                             Rs. {Number(day.total_revenue).toFixed(2)}
                           </td>
                         </tr>
