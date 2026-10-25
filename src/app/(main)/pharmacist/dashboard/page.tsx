@@ -6,7 +6,7 @@ import {
   Pill, AlertTriangle, AlertCircle, TrendingUp, BarChart3,
   ArrowRight, Coins, Layers, CheckCircle2, Calendar,
   ClipboardList, Search, User, Stethoscope, Clock, ShieldAlert,
-  Loader2, X, PackageCheck
+  Loader2, X, PackageCheck, FileText
 } from 'lucide-react';
 import {
   pharmacyService, PharmacyDashboardKpis, Medicine, PrescriptionQueueItem
@@ -340,6 +340,12 @@ export default function PharmacistDashboard() {
                         <Stethoscope className="w-3.5 h-3.5 text-teal-700" />
                         <span>Prescribed by <strong>Dr. {rx.doctor_name}</strong></span>
                       </div>
+                      {rx.diagnosis && (
+                        <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                          <FileText className="w-3.5 h-3.5 text-[#0E4749]" />
+                          <span>Diagnosis: <strong className="text-gray-800">{rx.diagnosis}</strong></span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right">
@@ -347,9 +353,14 @@ export default function PharmacistDashboard() {
                         Pending Dispense
                       </span>
                       {rx.prescribed_at && (
-                        <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
-                          <Clock className="w-3 h-3" />
-                          {new Date(rx.prescribed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-1 justify-end font-medium">
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          <span>
+                            {new Date(rx.prescribed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
+                            <span className="text-gray-400">
+                              {new Date(rx.prescribed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </span>
                         </div>
                       )}
                     </div>
@@ -498,22 +509,21 @@ export default function PharmacistDashboard() {
                         )}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          m.stock_qty <= 0
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${m.stock_qty <= 0
                             ? 'bg-red-100 text-red-800'
                             : days < 0
-                            ? 'bg-red-100 text-red-800'
-                            : isLow
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}>
+                              ? 'bg-red-100 text-red-800'
+                              : isLow
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                          }`}>
                           {m.stock_qty <= 0
                             ? 'Out of Stock'
                             : days < 0
-                            ? 'Expired'
-                            : isLow
-                            ? 'Low Stock'
-                            : 'Good'}
+                              ? 'Expired'
+                              : isLow
+                                ? 'Low Stock'
+                                : 'Good'}
                         </span>
                       </td>
                     </tr>
@@ -550,17 +560,51 @@ export default function PharmacistDashboard() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Patient & Doctor Card */}
-              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-xl text-xs border border-gray-200">
-                <div>
-                  <div className="text-gray-500 uppercase font-bold text-[10px]">Patient:</div>
-                  <div className="font-bold text-gray-900 text-sm mt-0.5">{selectedRx.patient_name}</div>
-                  <div className="text-gray-400 text-[11px]">Patient ID: #{selectedRx.patient_id}</div>
+              {/* Patient, Doctor, Diagnosis & Date Card */}
+              <div className="bg-gray-50 p-3.5 rounded-xl text-xs border border-gray-200 space-y-2.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px]">Patient:</div>
+                    <div className="font-bold text-gray-900 text-sm mt-0.5">{selectedRx.patient_name}</div>
+                    <div className="text-gray-400 text-[11px]">Patient ID: #{selectedRx.patient_id}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px]">Prescribing Physician:</div>
+                    <div className="font-bold text-[#0E4749] text-sm mt-0.5">Dr. {selectedRx.doctor_name}</div>
+                    <div className="text-gray-400 text-[11px]">Ref: Rx-{selectedRx.rx_id}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-gray-500 uppercase font-bold text-[10px]">Prescribing Physician:</div>
-                  <div className="font-bold text-[#0E4749] text-sm mt-0.5">Dr. {selectedRx.doctor_name}</div>
-                  <div className="text-gray-400 text-[11px]">Ref: Rx-{selectedRx.rx_id}</div>
+
+                <div className="pt-2 border-t border-gray-200/80 grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px] flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-[#0E4749]" />
+                      <span>Diagnosis:</span>
+                    </div>
+                    <div className="font-semibold text-gray-900 text-xs mt-0.5 bg-white px-2 py-1 rounded border border-gray-200 inline-block">
+                      {selectedRx.diagnosis ? selectedRx.diagnosis : 'Clinical Consultation'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px] flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-[#0E4749]" />
+                      <span>Prescribed Date:</span>
+                    </div>
+                    <div className="font-semibold text-gray-800 text-xs mt-0.5">
+                      {selectedRx.prescribed_at
+                        ? new Date(selectedRx.prescribed_at).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          }) +
+                          ' ' +
+                          new Date(selectedRx.prescribed_at).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Today'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -612,10 +656,7 @@ export default function PharmacistDashboard() {
                 </div>
               </div>
 
-              {/* Trigger & Stock Deduction Notice */}
-              <div className="text-[11px] text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                ⚡ <strong>Automated Database Trigger:</strong> Confirming this issuance will automatically record the dispensation and deduct <strong>{dispenseQty} units</strong> from the live pharmacy inventory stock.
-              </div>
+
             </div>
 
             {/* Modal Footer */}

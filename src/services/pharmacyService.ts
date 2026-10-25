@@ -81,6 +81,8 @@ export interface DailyDispensingReport {
   total_dispensations: number;
   total_units: number;
   total_revenue: number;
+  medicine_names?: string;
+  medicines_detail?: string;
 }
 
 export interface PharmacyDashboardKpis {
@@ -248,6 +250,7 @@ export interface PrescriptionQueueItem {
   prescribed_at?: string;
   patient_id: number;
   patient_name: string;
+  diagnosis?: string | null;
   allergies?: string | null;
   doctor_name: string;
   medicine_id?: number;
