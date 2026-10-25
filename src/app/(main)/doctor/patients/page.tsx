@@ -50,7 +50,7 @@ export default function DoctorPatientSearch() {
           <div className="absolute -right-8 -top-16 h-44 w-44 rounded-full bg-[#edf6ff]" />
           <div className="relative flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e8f2ff] text-[#1976ed]"><UsersRound className="h-8 w-8" strokeWidth={1.8} /></div>
-            <div><h1 className="text-xl font-bold text-[#183b69]">Patients</h1></div>
+            <div><h1 className="text-xl font-bold text-[#183b69]">Lab Orders</h1></div>
           </div>
         </section>
         <section className="rounded-2xl border border-[#e5effa] bg-white p-5 shadow-[0_4px_18px_rgba(61,121,177,0.08)]">
@@ -74,7 +74,7 @@ export default function DoctorPatientSearch() {
           </div>
         </section>
         <section className="rounded-2xl border border-[#e5effa] bg-white p-5 shadow-[0_4px_18px_rgba(61,121,177,0.08)]">
-          <div className="mb-5"><h2 className="text-lg font-bold text-[#183b69]">Patient List</h2></div>
+          <div className="mb-5"><h2 className="text-lg font-bold text-[#183b69]">Search for a Patient</h2></div>
           <div className="overflow-x-auto rounded-xl border border-[#dce9f6]">
             <div className="min-w-[920px]">
               <div className="grid grid-cols-[52px_1.45fr_1fr_0.7fr_0.8fr_0.9fr_1.2fr_1.2fr_120px_24px] items-center bg-[#eff6ff] px-4 py-3 text-xs font-bold text-[#375b85]"><span>#</span><span>Patient Name</span><span>Patient ID</span><span>Age</span><span>Gender</span><span>Blood Group</span><span>Phone</span><span>Last Visit</span><span>Action</span><span /></div>

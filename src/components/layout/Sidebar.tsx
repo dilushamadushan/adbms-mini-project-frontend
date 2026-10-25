@@ -43,8 +43,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/doctor/patient-action", label: "Patient Action", icon: Activity },
     { href: "/doctor/schedule", label: "My Schedule", icon: Calendar },
     { href: "/doctor/write", label: "Diagnosis / Rx", icon: FileText },
-    { href: "/doctor/patients?from=lab-orders", label: "Lab Orders", icon: TestTube },
-    { href: "/doctor/patients", label: "Patient Search", icon: Search },
+    { href: "/doctor/patients", label: "Lab Orders", icon: TestTube },
+    { href: "/patients", label: "Patient List", icon: Search },
   ];
 
   const nurseNavItems = [
