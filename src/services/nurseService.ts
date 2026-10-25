@@ -403,5 +403,22 @@ export const nurseService = {
     const res = await apiClient.get<any[]>('/nurse/ward-notes');
     return res.data;
   },
+
+  getNurseLabOrders: async (status?: string): Promise<any[]> => {
+    const params = status ? { status } : {};
+    const res = await apiClient.get<any[]>('/nurse/lab-orders', { params });
+    return res.data;
+  },
+
+  getPendingLabCount: async (): Promise<{ count: number }> => {
+    const res = await apiClient.get<{ count: number }>('/nurse/lab-orders/pending-count');
+    return res.data;
+  },
+
+  completeLabOrder: async (labId: number, resultsText: string): Promise<any> => {
+    const res = await apiClient.post<any>(`/nurse/lab-orders/${labId}/complete`, { results_text: resultsText });
+    return res.data;
+  },
 };
+
 
