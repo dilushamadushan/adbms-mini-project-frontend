@@ -133,8 +133,8 @@ export default function PharmacistHistory() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#DCE3E0]">
-                {filteredHistory.map((item, idx) => (
-                  <tr key={`${item.dispense_id}-${idx}`} className="hover:bg-gray-50/70 transition">
+                {filteredHistory.map((item) => (
+                  <tr key={item.dispense_id} className="hover:bg-gray-50/70 transition">
                     <td className="py-3 px-3 text-center font-mono text-gray-500">
                       #{item.dispense_id}
                     </td>

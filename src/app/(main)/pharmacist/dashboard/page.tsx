@@ -6,7 +6,7 @@ import {
   Pill, AlertTriangle, AlertCircle, TrendingUp, BarChart3,
   ArrowRight, Coins, Layers, CheckCircle2, Calendar,
   ClipboardList, Search, User, Stethoscope, Clock, ShieldAlert,
-  Loader2, X, PackageCheck, RefreshCw
+  Loader2, X, PackageCheck, FileText
 } from 'lucide-react';
 import {
   pharmacyService, PharmacyDashboardKpis, Medicine, PrescriptionQueueItem
@@ -47,38 +47,11 @@ export default function PharmacistDashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    // Auto-refresh queue every 10 seconds to pick up doctor prescriptions immediately
-    const interval = setInterval(() => {
-      loadDashboardData();
-    }, 10000);
-    return () => clearInterval(interval);
   }, [loadDashboardData]);
 
-  // Open Dispense Modal with smart default quantity and medicine auto-mapping
+  // Open Dispense Modal with smart default quantity
   const handleOpenDispenseModal = (rx: PrescriptionQueueItem) => {
-    let itemToSelect: PrescriptionQueueItem = { ...rx };
-    
-    // Fallback drug matching if medicine_id was not automatically mapped
-    if (!itemToSelect.medicine_id && fullInventory.length > 0) {
-      const firstWord = rx.med_name.split(' ')[0].toLowerCase();
-      const matched = fullInventory.find(m => 
-        m.med_name.toLowerCase().includes(rx.med_name.toLowerCase()) ||
-        rx.med_name.toLowerCase().includes(m.med_name.toLowerCase()) ||
-        (firstWord.length > 2 && m.med_name.toLowerCase().includes(firstWord)) ||
-        (m.generic_name && m.generic_name.toLowerCase().includes(firstWord))
-      );
-      if (matched) {
-        itemToSelect = {
-          ...itemToSelect,
-          medicine_id: matched.medicine_id,
-          inventory_med_name: matched.med_name,
-          stock_qty: matched.stock_qty,
-          unit_price: matched.unit_price,
-        };
-      }
-    }
-
-    setSelectedRx(itemToSelect);
+    setSelectedRx(rx);
     setActionError(null);
     setActionSuccess(null);
 
@@ -325,19 +298,9 @@ export default function PharmacistDashboard() {
                 className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0E4749]/20"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-[#0E4749] rounded-lg border border-teal-200 shrink-0">
-                {filteredQueue.length} Pending
-              </span>
-              <button
-                onClick={() => loadDashboardData()}
-                disabled={isLoading}
-                className="p-1.5 text-gray-600 hover:text-[#0E4749] hover:bg-gray-100 rounded-lg transition border border-gray-200 bg-white"
-                title="Refresh doctor prescriptions queue"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#0E4749]' : ''}`} />
-              </button>
-            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-[#0E4749] rounded-lg border border-teal-200 shrink-0">
+              {filteredQueue.length} Pending
+            </span>
           </div>
         </div>
 
@@ -358,8 +321,7 @@ export default function PharmacistDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredQueue.map((rx) => {
               const hasAllergy = rx.allergies && rx.allergies.toLowerCase() !== 'none' && rx.allergies.trim() !== '';
-              const isMapped = rx.medicine_id !== undefined && rx.medicine_id !== null;
-              const inStock = isMapped && rx.stock_qty !== undefined && rx.stock_qty > 0;
+              const inStock = rx.stock_qty !== undefined && rx.stock_qty > 0;
 
               return (
                 <div
@@ -378,6 +340,12 @@ export default function PharmacistDashboard() {
                         <Stethoscope className="w-3.5 h-3.5 text-teal-700" />
                         <span>Prescribed by <strong>Dr. {rx.doctor_name}</strong></span>
                       </div>
+                      {rx.diagnosis && (
+                        <div className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
+                          <FileText className="w-3.5 h-3.5 text-[#0E4749]" />
+                          <span>Diagnosis: <strong className="text-gray-800">{rx.diagnosis}</strong></span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right">
@@ -385,9 +353,14 @@ export default function PharmacistDashboard() {
                         Pending Dispense
                       </span>
                       {rx.prescribed_at && (
-                        <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 justify-end">
-                          <Clock className="w-3 h-3" />
-                          {new Date(rx.prescribed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                        <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-1 justify-end font-medium">
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          <span>
+                            {new Date(rx.prescribed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
+                            <span className="text-gray-400">
+                              {new Date(rx.prescribed_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </span>
                         </div>
                       )}
                     </div>
@@ -423,12 +396,7 @@ export default function PharmacistDashboard() {
                   <div className="flex items-center justify-between pt-1">
                     <div className="text-xs">
                       <div className="text-[11px] text-gray-500">Inventory Status:</div>
-                      {!isMapped ? (
-                        <div className="font-semibold text-amber-600 flex items-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Assign Stock Drug</span>
-                        </div>
-                      ) : inStock ? (
+                      {inStock ? (
                         <div className="font-semibold text-emerald-700 flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{rx.stock_qty} in stock</span>
@@ -436,14 +404,14 @@ export default function PharmacistDashboard() {
                       ) : (
                         <div className="font-semibold text-red-600 flex items-center gap-1">
                           <AlertCircle className="w-3.5 h-3.5 text-red-600" />
-                          <span>Out of Stock</span>
+                          <span>Out of Stock (Need Reorder)</span>
                         </div>
                       )}
                     </div>
 
                     <button
                       onClick={() => handleOpenDispenseModal(rx)}
-                      disabled={isMapped && !inStock}
+                      disabled={!inStock}
                       className="px-3.5 py-2 bg-[#0E4749] hover:bg-[#082d2f] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                     >
                       <PackageCheck className="w-3.5 h-3.5" />
@@ -541,22 +509,21 @@ export default function PharmacistDashboard() {
                         )}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          m.stock_qty <= 0
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${m.stock_qty <= 0
                             ? 'bg-red-100 text-red-800'
                             : days < 0
-                            ? 'bg-red-100 text-red-800'
-                            : isLow
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}>
+                              ? 'bg-red-100 text-red-800'
+                              : isLow
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                          }`}>
                           {m.stock_qty <= 0
                             ? 'Out of Stock'
                             : days < 0
-                            ? 'Expired'
-                            : isLow
-                            ? 'Low Stock'
-                            : 'Good'}
+                              ? 'Expired'
+                              : isLow
+                                ? 'Low Stock'
+                                : 'Good'}
                         </span>
                       </td>
                     </tr>
@@ -593,17 +560,51 @@ export default function PharmacistDashboard() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Patient & Doctor Card */}
-              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-xl text-xs border border-gray-200">
-                <div>
-                  <div className="text-gray-500 uppercase font-bold text-[10px]">Patient:</div>
-                  <div className="font-bold text-gray-900 text-sm mt-0.5">{selectedRx.patient_name}</div>
-                  <div className="text-gray-400 text-[11px]">Patient ID: #{selectedRx.patient_id}</div>
+              {/* Patient, Doctor, Diagnosis & Date Card */}
+              <div className="bg-gray-50 p-3.5 rounded-xl text-xs border border-gray-200 space-y-2.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px]">Patient:</div>
+                    <div className="font-bold text-gray-900 text-sm mt-0.5">{selectedRx.patient_name}</div>
+                    <div className="text-gray-400 text-[11px]">Patient ID: #{selectedRx.patient_id}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px]">Prescribing Physician:</div>
+                    <div className="font-bold text-[#0E4749] text-sm mt-0.5">Dr. {selectedRx.doctor_name}</div>
+                    <div className="text-gray-400 text-[11px]">Ref: Rx-{selectedRx.rx_id}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-gray-500 uppercase font-bold text-[10px]">Prescribing Physician:</div>
-                  <div className="font-bold text-[#0E4749] text-sm mt-0.5">Dr. {selectedRx.doctor_name}</div>
-                  <div className="text-gray-400 text-[11px]">Ref: Rx-{selectedRx.rx_id}</div>
+
+                <div className="pt-2 border-t border-gray-200/80 grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px] flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-[#0E4749]" />
+                      <span>Diagnosis:</span>
+                    </div>
+                    <div className="font-semibold text-gray-900 text-xs mt-0.5 bg-white px-2 py-1 rounded border border-gray-200 inline-block">
+                      {selectedRx.diagnosis ? selectedRx.diagnosis : 'Clinical Consultation'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 uppercase font-bold text-[10px] flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-[#0E4749]" />
+                      <span>Prescribed Date:</span>
+                    </div>
+                    <div className="font-semibold text-gray-800 text-xs mt-0.5">
+                      {selectedRx.prescribed_at
+                        ? new Date(selectedRx.prescribed_at).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          }) +
+                          ' ' +
+                          new Date(selectedRx.prescribed_at).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Today'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -618,11 +619,11 @@ export default function PharmacistDashboard() {
                 </div>
               )}
 
-              {/* Prescribed Drug & Inventory Drug Selection */}
-              <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+              {/* Prescribed Drug Details */}
+              <div className="border border-gray-200 rounded-xl p-4 space-y-2.5">
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Doctor&apos;s Prescribed Medicine:</div>
+                    <div className="text-[11px] font-bold text-gray-500 uppercase">Prescribed Medicine:</div>
                     <div className="font-black text-gray-900 text-base">{selectedRx.med_name}</div>
                     <div className="text-xs text-gray-600 mt-0.5">
                       Dosage: <strong>{selectedRx.dosage}</strong>
@@ -631,42 +632,9 @@ export default function PharmacistDashboard() {
                   </div>
                 </div>
 
-                {/* Inventory Drug Match Selector */}
-                <div className="pt-2 border-t border-gray-100">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">
-                    Dispensing Inventory Drug:
-                  </label>
-                  <select
-                    value={selectedRx.medicine_id || ''}
-                    onChange={(e) => {
-                      const newMedId = Number(e.target.value);
-                      const matched = fullInventory.find(m => m.medicine_id === newMedId);
-                      if (matched) {
-                        setSelectedRx({
-                          ...selectedRx,
-                          medicine_id: matched.medicine_id,
-                          inventory_med_name: matched.med_name,
-                          stock_qty: matched.stock_qty,
-                          unit_price: matched.unit_price,
-                        });
-                      }
-                    }}
-                    className="w-full text-xs border border-gray-300 rounded-lg p-2 font-medium bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0E4749]/30"
-                  >
-                    <option value="">-- Select Inventory Medicine --</option>
-                    {fullInventory.map((med) => (
-                      <option key={med.medicine_id} value={med.medicine_id}>
-                        {med.med_name} (In Stock: {med.stock_qty} | Rs. {Number(med.unit_price).toFixed(2)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex justify-between text-xs text-gray-600 pt-1">
+                <div className="pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-600">
                   <span>Available Inventory Stock:</span>
-                  <span className={`font-bold ${selectedRx.stock_qty && selectedRx.stock_qty > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {selectedRx.stock_qty ?? 0} units available
-                  </span>
+                  <span className="font-bold text-emerald-700">{selectedRx.stock_qty} units available</span>
                 </div>
               </div>
 
@@ -687,6 +655,7 @@ export default function PharmacistDashboard() {
                   />
                 </div>
               </div>
+
 
             </div>
 
