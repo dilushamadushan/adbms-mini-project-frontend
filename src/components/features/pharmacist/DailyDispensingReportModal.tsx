@@ -197,7 +197,8 @@ export default function DailyDispensingReportModal({
                   <tr>
                     <th className="py-2.5 px-3 w-10 text-center">#</th>
                     <th className="py-2.5 px-3">Date (DD-MM-YYYY)</th>
-                    <th className="py-2.5 px-3 text-center">Prescriptions Dispensed</th>
+                    <th className="py-2.5 px-3 text-center">Prescriptions</th>
+                    <th className="py-2.5 px-3">Dispensed Medicines</th>
                     <th className="py-2.5 px-3 text-center">Units Dispensed</th>
                     <th className="py-2.5 px-3 text-right">Daily Revenue (Rs.)</th>
                   </tr>
@@ -205,7 +206,7 @@ export default function DailyDispensingReportModal({
                 <tbody className="divide-y divide-gray-200">
                   {dailyReport.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-gray-500">
+                      <td colSpan={6} className="py-6 text-center text-gray-500">
                         No dispensing events found within the designated audit timeframe.
                       </td>
                     </tr>
@@ -213,18 +214,23 @@ export default function DailyDispensingReportModal({
                     dailyReport.map((day, idx) => (
                       <tr key={String(day.report_date) || idx} className="hover:bg-gray-50">
                         <td className="py-2.5 px-3 text-center text-gray-500 font-mono">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-semibold text-gray-900">
+                        <td className="py-2.5 px-3 font-semibold text-gray-900 whitespace-nowrap">
                           {new Date(day.report_date).toLocaleDateString('en-GB', {
                             day: '2-digit', month: 'short', year: 'numeric'
                           })}
                         </td>
-                        <td className="py-2.5 px-3 text-center text-gray-700 font-medium">
+                        <td className="py-2.5 px-3 text-center text-gray-700 font-medium whitespace-nowrap">
                           {day.total_dispensations} prescriptions
                         </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-[#0E4749]">
+                        <td className="py-2.5 px-3 text-gray-800">
+                          {day.medicines_detail || day.medicine_names || (
+                            <span className="text-gray-400 italic">None recorded</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-bold text-[#0E4749] whitespace-nowrap">
                           {day.total_units} units
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-gray-900">
+                        <td className="py-2.5 px-3 text-right font-bold text-gray-900 whitespace-nowrap">
                           Rs. {Number(day.total_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
@@ -236,13 +242,14 @@ export default function DailyDispensingReportModal({
                     <td colSpan={2} className="py-3 px-3 uppercase tracking-wider text-xs">
                       Grand Total Reconciliation:
                     </td>
-                    <td className="py-3 px-3 text-center text-xs font-bold text-gray-800">
+                    <td className="py-3 px-3 text-center text-xs font-bold text-gray-800 whitespace-nowrap">
                       {totalPrescriptions} prescriptions
                     </td>
-                    <td className="py-3 px-3 text-center text-xs font-bold text-[#0E4749]">
+                    <td className="py-3 px-3 text-xs text-gray-400 text-center">-</td>
+                    <td className="py-3 px-3 text-center text-xs font-bold text-[#0E4749] whitespace-nowrap">
                       {totalUnits} units
                     </td>
-                    <td className="py-3 px-3 text-right text-sm text-[#0E4749]">
+                    <td className="py-3 px-3 text-right text-sm text-[#0E4749] whitespace-nowrap">
                       Rs. {Number(totalRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
