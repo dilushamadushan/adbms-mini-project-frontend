@@ -66,7 +66,16 @@ function mapAppointment(a: ApiAppointment): DoctorAppointment {
         reason: a.reason ?? a.dept_name ?? 'Consultation',
         status: STATUS_MAP[a.status?.toLowerCase()] ?? 'SCHEDULED',
     };
-}
+};
+
+export type DoctorCurrentScheduleSlot = {
+  appointment_date: string;
+  appointment_time: string;
+  slot_status: 'OPEN' | 'BOOKED' | string;
+  apt_id: number | null;
+  patient_name: string | null;
+  appointment_status: string | null;
+};
 
 export const doctorService = {
   getLabOrderPatients: () =>
@@ -75,6 +84,10 @@ export const doctorService = {
     apiClient.post<CreatedLabOrder>('/doctor/lab-orders', payload),
   getPatientLabResults: (patientId: number) =>
     apiClient.get<PatientLabResult[]>(`/doctor/lab-orders/patient/${patientId}`),
+  getCurrentSchedule: (doctorId: number) =>
+    apiClient.get<DoctorCurrentScheduleSlot[]>(`/doctor/current-schedule/${doctorId}`),
+  getCurrentScheduleByUser: (userId: number) =>
+    apiClient.get<DoctorCurrentScheduleSlot[]>(`/doctor/current-schedule-by-user/${userId}`),
     getAppointments: async (doctorId: number): Promise<DoctorAppointment[]> => {
         const res = await apiClient.get<ApiAppointment[]>(`/doctor/appointments/${doctorId}`);
         return (res.data || []).map(mapAppointment);
